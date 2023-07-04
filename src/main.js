@@ -33,20 +33,22 @@ const {
   enableStats,
   statBlocks,
   extraAttributes,
+  DNA_DELIMITER
 } = require(`${basePath}/src/config.js`);
+const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
+
 const canvas = createCanvas(format.width, format.height);
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = format.smoothing;
-var metadataList = [];
-var attributesList = [];
-var statList = [];
-var dnaList = new Set();
-const DNA_DELIMITER = "-";
-const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
+
+const metadataList = []
+const dnaList = new Set();
 const oldDna = `${basePath}/build_old/_oldDna.json`;
 
+let statList = [];
+let attributesList = [];
 let hashlipsGiffer = null;
-let allTraitsCount;
+let allTraitsCount = null;
 
 const buildSetup = () => {
   if (!fs.existsSync(buildDir)) {
@@ -77,7 +79,7 @@ const buildSetup = () => {
 }
 
 const getRarityWeight = (_str) => {
-  let nameWithoutExtension = _str.slice(0, -4);
+  const nameWithoutExtension = _str.slice(0, -4);
   if (namedWeight) {
   var nameWithoutWeight = String(
     nameWithoutExtension.split(rarityDelimiter).pop()
@@ -90,13 +92,13 @@ const getRarityWeight = (_str) => {
 
 function cleanDna(_str) {
   const withoutOptions = removeQueryStrings(_str);
-  var dna = Number(withoutOptions.split(":").shift());
+  const dna = Number(withoutOptions.split(":").shift());
   return dna;
 }
 
 const cleanName = (_str) => {
-  let nameWithoutExtension = _str.slice(0, -4);
-  var nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
+  const nameWithoutExtension = _str.slice(0, -4);
+  const nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
   return nameWithoutWeight;
 };
 
@@ -156,7 +158,7 @@ const layersSetup = (layersOrder) => {
 // };
 
 const saveImage = (_editionCount) => {
-  fs.writeFileSync(
+  return fs.promises.writeFile(
     `${buildDir}/images/${_editionCount}.png`,
     canvas.toBuffer("image/png", {
       resolution: format.dpi,
@@ -374,7 +376,7 @@ const createDnaNames = (_layers, _variant) => {
       Uncommon: 0,
       Common: 0
     }
-    var totalWeight = 10000;
+    const totalWeight = 10000;
     // Get count of each rarity in layer folders
     layer.elements.forEach((element) => {
       switch (element.weight) {
@@ -441,7 +443,7 @@ const createDnaNames = (_layers, _variant) => {
     rarityCount.Mythic -= mythicDiff;
     // Proceed with random generation: number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
-    for (var i = 0; i < layer.elements.length; i++) {
+    for (let i = 0; i < layer.elements.length; i++) {
       let newWeight = layer.elements[i].weight;
       // subtract the current weight from the random weight until we reach a sub zero value.
       random -= rarityCount[newWeight];
@@ -465,12 +467,12 @@ const createDnaNames = (_layers, _variant) => {
 
 
 const createDnaExact = (_layers, _remainingInLayersOrder, _currentEdition, _variant) => {
-  let randNum = [];
-  let layerSizes = allLayerSizes();
+  const randNum = [];
+  const layerSizes = allLayerSizes();
   _layers.forEach((layer) => {
-    var totalWeight = 0;
-    let expected = layerSizes[layer.name] - _currentEdition;
-    let remaining = toCreateNow - _currentEdition
+    let totalWeight = 0;
+    const expected = layerSizes[layer.name] - _currentEdition;
+    const remaining = toCreateNow - _currentEdition
     layer.elements.forEach((element) => {
       totalWeight += allTraitsCount[element.name];
     });
@@ -484,9 +486,9 @@ const createDnaExact = (_layers, _remainingInLayersOrder, _currentEdition, _vari
     // number between 0 - totalWeight
     // We keep the random function here to ensure we don't generate all the same layers back to back.
     let random = Math.floor(Math.random() * totalWeight);
-    for (var i = 0; i < layer.elements.length; i++) {
+    for (let i = 0; i < layer.elements.length; i++) {
       // subtract the current weight from the random weight until we reach a sub zero value.
-      let lookup = allTraitsCount[layer.elements[i].name];
+      const lookup = allTraitsCount[layer.elements[i].name];
       if (lookup > 0) {
         random -= allTraitsCount[layer.elements[i].name];
       }
@@ -511,13 +513,13 @@ const createDnaExact = (_layers, _remainingInLayersOrder, _currentEdition, _vari
 const createDna = (_layers, _variant) => {
   let randNum = [];
   _layers.forEach((layer) => {
-    var totalWeight = 0;
+    let totalWeight = 0;
     layer.elements.forEach((element) => {
       totalWeight += element.weight;
     });
     // number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
-    for (var i = 0; i < layer.elements.length; i++) {
+    for (let i = 0; i < layer.elements.length; i++) {
       // subtract the current weight from the random weight until we reach a sub zero value.
       random -= layer.elements[i].weight;
       if (random < 0) {
@@ -541,13 +543,13 @@ const createDna = (_layers, _variant) => {
 const createDnaOG = (_layers) => {
   let randNum = [];
   _layers.forEach((layer) => {
-    var totalWeight = 0;
+    let totalWeight = 0;
     layer.elements.forEach((element) => {
       totalWeight += element.weight;
     });
     // number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
-    for (var i = 0; i < layer.elements.length; i++) {
+    for (let i = 0; i < layer.elements.length; i++) {
       // subtract the current weight from the random weight until we reach a sub zero value.
       random -= layer.elements[i].weight;
       if (random < 0) {
@@ -562,9 +564,9 @@ const createDnaOG = (_layers) => {
   return randNum.join(DNA_DELIMITER);
 };
 
-const writeMetaData = (_data) => {
-  fs.writeFileSync(`${buildDir}/json/_metadata.json`, _data);
-};
+// const writeMetaData = (_data) => {
+//   fs.writeFileSync(`${buildDir}/json/_metadata.json`, _data);
+// };
 
 const sortedMetadata = () => {
   let files = fs.readdirSync(`${buildDir}/json`);
@@ -579,26 +581,24 @@ const sortedMetadata = () => {
     return a - b;
   });
 
+  const writingPromises = [];
   for (let i = 0; i < filenames.length; i++) {
     if (!isNaN(filenames[i])) {
       let rawFile = fs.readFileSync(`${basePath}/build/json/${filenames[i]}.json`);
       let data = JSON.parse(rawFile);
-      fs.writeFileSync(`${basePath}/build/json/${data.edition}.json`, JSON.stringify(data, null, 2));
+      writingPromises.push(fs.promises.writeFile(`${basePath}/build/json/${data.edition}.json`, JSON.stringify(data, null, 2)))
       allMetadata.push(data);
-    } 
+    }
   }
-  fs.writeFileSync(`${buildDir}/json/_metadata.json`, JSON.stringify(allMetadata, null, 2));
+  writingPromises.push(fs.promises.writeFile(`${buildDir}/json/_metadata.json`, JSON.stringify(allMetadata, null, 2)))
+  Promise.all(writingPromises).catch(console.error)
   console.log(`Ordered all items numerically in _metadata.json. Saved in ${basePath}/build/json`);
 }
 
 const saveMetaDataSingleFile = (_editionCount) => {
-  let metadata = metadataList.find((meta) => meta.edition == _editionCount);
-  debugLogs
-    ? console.log(
-        `Writing metadata for ${_editionCount}: ${JSON.stringify(metadata)}`
-      )
-    : null;
-  fs.writeFileSync(
+  const metadata = metadataList.find((meta) => meta.edition == _editionCount);
+  if (debugLogs) console.log(`Writing metadata for ${_editionCount}: ${JSON.stringify(metadata)}`);
+  return fs.promises.writeFile(
     `${buildDir}/json/${_editionCount}.json`,
     JSON.stringify(metadata, null, 2)
   );
@@ -619,7 +619,7 @@ function shuffle(array) {
 }
 
 const traitCount = (_layers) => {
-  let count = new Object();
+  const count = new Object();
   _layers.forEach((layer) => {
     layer.elements.forEach((element) => {
       count[element.name] = element.weight;
@@ -629,7 +629,7 @@ const traitCount = (_layers) => {
 };
 
 const allLayersOrders = () => {
-  let layerList = [];
+  const layerList = [];
   for (let i = 0; i < layerConfigurations.length; i++) {
     const layers = layersSetup(
       layerConfigurations[i].layersOrder
@@ -643,7 +643,7 @@ const allLayersOrders = () => {
 }
 
 const allLayerSizes = () => {
-  let layerList = new Object();
+  const layerList = new Object();
   for (let i = 0; i < layerConfigurations.length; i++) {
     const layers = layersSetup(
       layerConfigurations[i].layersOrder
@@ -657,15 +657,15 @@ const allLayerSizes = () => {
 }
 
 const createVariation = (_variations) => {
-  let setVariant = [];
+  const setVariant = [];
   _variations.forEach((variant) => {
-    var totalWeight = 0;
+    let totalWeight = 0;
     variant.Weight.forEach((Weight) => {
       totalWeight += Weight;
     });
     // number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
-    for (var i = 0; i < variant.Weight.length; i++) {
+    for (let i = 0; i < variant.Weight.length; i++) {
       // subtract the current weight from the random weight until we reach a sub zero value.
       random -= variant.Weight[i];
       if (random < 0) {
@@ -680,7 +680,7 @@ const createVariation = (_variations) => {
 
 const startCreating = async () => {
   if (exactWeight) {
-    let allLayers = allLayersOrders();
+    const allLayers = allLayersOrders();
     allTraitsCount = traitCount(allLayers);
   }
   let layerConfigIndex = 0;
@@ -697,9 +697,7 @@ const startCreating = async () => {
   if (shuffleLayerConfigurations) {
     abstractedIndexes = shuffle(abstractedIndexes);
   }
-  debugLogs
-    ? console.log("Editions left to create: ", abstractedIndexes)
-    : null;
+  if (debugLogs) console.log('Editions left to create: ', abstractedIndexes);    
   while (layerConfigIndex < layerConfigurations.length) {
     const layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder
@@ -715,95 +713,86 @@ const startCreating = async () => {
         throw new Error(`namedWeight and exactWeight can't be used together. Please mark one or both as false in config.js`);
       }
 
-      let newVariant = createVariation(layerVariations);
-      let variant = newVariant.split(':').pop();
-      let variantName = newVariant.split(':')[0];
-
-      let newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
-
-      let duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
+      const newVariant = createVariation(layerVariations);
+      const variant = newVariant.split(':').pop();
+      const variantName = newVariant.split(':')[0];
+      const newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
+      const duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 
       // if (isDnaUnique(dnaList, newDna)) {
       if (duplicatesAllowed) {
-        let results = constructLayerToDna(newDna, layers);
-
+        const results = constructLayerToDna(newDna, layers);
         if (exactWeight) {
           results.forEach((layer) => {
             allTraitsCount[layer.selectedElement.name]--;
           })
         }
-
-        let loadedElements = [];
-
+        const loadedElements = [];
         results.forEach((layer) => {
           loadedElements.push(loadLayerImg(layer));
         });
 
-        await Promise.all(loadedElements).then((renderObjectArray) => {
-          debugLogs ? console.log("Clearing canvas") : null;
-          ctx.clearRect(0, 0, format.width, format.height);
-          if (gif.export) {
-            hashlipsGiffer = new HashlipsGiffer(
-              canvas,
-              ctx,
-              `${buildDir}/gifs/${abstractedIndexes[0]}.gif`,
-              gif.repeat,
-              gif.quality,
-              gif.delay
-            );
-            hashlipsGiffer.start();
-          }
-          if (background.generate) {
-            drawBackground();
-          }
-          let variantMetadata = false
-          renderObjectArray.forEach((renderObject, index) => {
-            Object.keys(renderObject.layer).forEach(key => {
-              if (renderObject.layer.layerVariations !== undefined) {
-                variantMetadata = true;
-              }
-            })
-            
-            drawElement(
-              renderObject,
-              index,
-              layerConfigurations[layerConfigIndex].layersOrder.length
-            );
-            if (gif.export) {
-              hashlipsGiffer.add();
+        const renderObjectArray = await Promise.all(loadedElements);
+        if (debugLogs) console.log('Clearing canvas');
+        ctx.clearRect(0, 0, format.width, format.height);
+        if (gif.export) {
+          hashlipsGiffer = new HashlipsGiffer(
+            canvas,
+            ctx,
+            `${buildDir}/gifs/${abstractedIndexes[0]}.gif`,
+            gif.repeat,
+            gif.quality,
+            gif.delay,
+          );
+          hashlipsGiffer.start();
+        }
+
+        if (background.generate) {
+          drawBackground();
+        }
+
+        let variantMetadata = false;
+        renderObjectArray.forEach((renderObject, index) => {
+          Object.keys(renderObject.layer).forEach((key) => {
+            if (renderObject.layer.layerVariations !== undefined) {
+              variantMetadata = true;
             }
           });
-          extraAttributes.forEach((attr) => {
-            attributesList.push(attr);
-          });
-          if (variantMetadata) {
-            attributesList.push({
-              trait_type: variantName,
-              value: variant,
-            });
-          }
-          if (enableStats) {
-            addStats();
-            statList.forEach((stat) => {
-              attributesList.push(stat);
-            });
-            statList = [];
-          }
+          drawElement(renderObject, index, layerConfigurations[layerConfigIndex].layersOrder.length);
           if (gif.export) {
-            hashlipsGiffer.stop();
+            hashlipsGiffer.add();
           }
-          debugLogs
-            ? console.log("Editions left to create: ", abstractedIndexes)
-            : null;
-          saveImage(abstractedIndexes[0]+resumeNum);
-          addMetadata(newDna, abstractedIndexes[0]+resumeNum);
-          saveMetaDataSingleFile(abstractedIndexes[0]+resumeNum);
-          console.log(
-            `Created edition: ${abstractedIndexes[0]+resumeNum}, with DNA: ${sha1(
-              newDna
-            )}`
-          );
         });
+
+        extraAttributes.forEach((attr) => {
+          attributesList.push(attr);
+        });
+
+        if (variantMetadata) {
+          attributesList.push({
+            trait_type: variantName,
+            value: variant,
+          });
+        }
+
+        if (enableStats) {
+          addStats();
+          statList.forEach((stat) => {
+            attributesList.push(stat);
+          });
+          statList = [];
+        }
+
+        if (gif.export) {
+          hashlipsGiffer.stop();
+        }
+
+        if (debugLogs) console.log('Editions left to create: ', abstractedIndexes);
+        await saveImage(abstractedIndexes[0] + resumeNum)
+        addMetadata(newDna, abstractedIndexes[0] + resumeNum);
+        await saveMetaDataSingleFile(abstractedIndexes[0] + resumeNum)
+        console.log(`Created edition: ${abstractedIndexes[0] + resumeNum}, with DNA: ${sha1(newDna)}`);
+
         dnaList.add(filterDNAOptions(newDna));
         editionCount++;
         abstractedIndexes.shift();
@@ -811,10 +800,9 @@ const startCreating = async () => {
         console.log("DNA exists!");
         failedCount++;
         if (failedCount >= uniqueDnaTorrance) {
-          console.log(
+          throw new Error(
             `You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
           );
-          process.exit();
         }
       }
     }

@@ -2,6 +2,8 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
+const DNA_DELIMITER = "-";
+
 const collectionSize = 1000;
 const toCreateNow = 30;
 
@@ -276,4 +278,5 @@ module.exports = {
   enableStats,
   statBlocks,
   extraAttributes,
+  DNA_DELIMITER
 };
