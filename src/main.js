@@ -707,16 +707,31 @@ const startCreating = async () => {
     abstractedIndexes = shuffle(abstractedIndexes);
   }
   if (debugLogs) console.log('Editions left to create: ', abstractedIndexes);    
+
+  let doSizeConvert = false;
+  let collectSizes = [0];
+  layerConfigurations.forEach((layerConfig, index) => {
+    if (layerConfig.growEditionSizeTo <= collectSizes[index]) doSizeConvert = true;
+    collectSizes.push(layerConfig.growEditionSizeTo);
+  });
+  if (doSizeConvert)
+    for (let index = 0; index < layerConfigurations.length; index += 1) {
+      if (index != 0)
+        layerConfigurations[index].growEditionSizeTo =
+          layerConfigurations[index - 1].growEditionSizeTo + layerConfigurations[index].growEditionSizeTo;
+    }
+
+  const writingPromises = []
+
   while (layerConfigIndex < layerConfigurations.length) {
     const layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder
     );
     while (
-      editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo
+      editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo && editionCount <= toCreateNow
     ) {
-
-      let currentEdition = editionCount - 1;
-      let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
+      // let currentEdition = editionCount - 1;
+      // let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
       
       if (exactWeight && namedWeight) {
         throw new Error(`namedWeight and exactWeight can't be used together. Please mark one or both as false in config.js`);
@@ -725,6 +740,7 @@ const startCreating = async () => {
       const newVariant = createVariation(layerVariations);
       const variant = newVariant.split(':').pop();
       const variantName = newVariant.split(':')[0];
+      // const newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
       const newDna = namedWeight ? createDnaNames(layers, variant) : createDna(layers, variant);
       const duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 
@@ -797,9 +813,9 @@ const startCreating = async () => {
         }
 
         if (debugLogs) console.log('Editions left to create: ', abstractedIndexes);
-        await saveImage(abstractedIndexes[0] + resumeNum)
         addMetadata(newDna, abstractedIndexes[0] + resumeNum);
-        await saveMetaDataSingleFile(abstractedIndexes[0] + resumeNum)
+        writingPromises.push(saveImage(abstractedIndexes[0] + resumeNum))
+        writingPromises.push(saveMetaDataSingleFile(abstractedIndexes[0] + resumeNum))
         console.log(`Created edition: ${abstractedIndexes[0] + resumeNum}, with DNA: ${sha1(newDna)}`);
 
         dnaList.add(filterDNAOptions(newDna));
@@ -817,8 +833,15 @@ const startCreating = async () => {
     }
     layerConfigIndex++;
   }
-  // writeMetaData(JSON.stringify(metadataList, null, 2));
-  sortedMetadata();
+
+  Promise.all(writingPromises)
+    .then(() => {
+      // writeMetaData(JSON.stringify(metadataList, null, 2));
+      sortedMetadata();
+    })
+    .catch((err) => {
+      throw new Error(`Failed to create ALL image or metadata, you will need to rerun datlips`);
+    });
 };
 
 module.exports = { startCreating, buildSetup, getElements };
