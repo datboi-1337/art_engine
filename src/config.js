@@ -48,7 +48,7 @@ const layerConfigurations = [
   {
     growEditionSizeTo: 55,
     layersOrder: [
-      { name: "SkeletalBody" }, 
+      { name: "SkeletalBody" },
       { name: "Head", options: {layerVariations: 'Color', displayName: 'test'} },
       { name: "Back" },
       { name: "Legs" },

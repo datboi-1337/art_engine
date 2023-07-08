@@ -831,7 +831,7 @@ const startCreating = async () => {
         failedCount++;
         if (failedCount >= uniqueDnaTorrance) {
           console.log(
-            `More the ${uniqueDnaTorrance} duplicates created! You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
+            `More then ${uniqueDnaTorrance} duplicates created! You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
           );
           process.exit();
         }
