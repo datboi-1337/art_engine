@@ -5,6 +5,7 @@ const sha1 = require(`${basePath}/node_modules/sha1`);
 const { createCanvas, loadImage } = require(`${basePath}/node_modules/canvas`);
 const buildDir = `${basePath}/build`;
 const layersDir = `${basePath}/layers`;
+// const layersDir = `${basePath}/layers-numbersExample`;
 const {
   format,
   baseUri,
@@ -81,7 +82,7 @@ const getRarityWeight = (_str, _total) => {
   if (namedWeight) {
     var nameWithoutWeight = String(nameWithoutExtension.split(rarityDelimiter).pop());
   } else if (exactWeight) {
-    var nameWithoutWeight = Math.floor(10000 * Number(nameWithoutExtension.split(rarityDelimiter).pop()) / _total);
+    var nameWithoutWeight = Math.floor(100 * Number(nameWithoutExtension.split(rarityDelimiter).pop()) / _total);
   } else {
     var nameWithoutWeight = Math.floor(10000 / _total);
   }
@@ -250,7 +251,7 @@ const loadLayerImg = (_layer) => {
   return new Promise((resolve, reject) => {
     let path = _layer.selectedElement.path;
     if (_layer.layerVariations != undefined) {
-      path = path.split('#')[0];
+      path = path.replace('.png', '').split('#')[0];
       path = path.concat(_layer.variant.concat('.png'));
       path = path.replace(_layer.ogName, _layer.ogName.concat('-variant'));
     }
@@ -472,7 +473,6 @@ const createDnaNames = (_layers, _variant) => {
   });
   return randNum.join(DNA_DELIMITER);
 };
-
 
 const createDnaExact = (_layers, _remainingInLayersOrder, _currentEdition, _variant) => {
   let randNum = [];
@@ -728,8 +728,8 @@ const startCreating = async () => {
       editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo && editionCount <= toCreateNow
     ) {
 
-      // let currentEdition = editionCount - 1;
-      // let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
+      let currentEdition = editionCount - 1;
+      let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
       
       if (exactWeight && namedWeight) {
         throw new Error(`namedWeight and exactWeight can't be used together. Please mark one or both as false in config.js`);
@@ -739,8 +739,7 @@ const startCreating = async () => {
       let variant = newVariant.split(':').pop();
       let variantName = newVariant.split(':')[0];
 
-      // let newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
-      let newDna = namedWeight ? createDnaNames(layers, variant) : createDna(layers, variant);
+      let newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
 
       let duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 

@@ -46,7 +46,7 @@ const solanaMetadata = {
 // If you have selected Solana then the collection starts from 0 automatically
 const layerConfigurations = [
   {
-    growEditionSizeTo: 55,
+    growEditionSizeTo: 5,
     layersOrder: [
       { name: "SkeletalBody" },
       { name: "Head", options: {layerVariations: 'Color', displayName: 'test'} },
