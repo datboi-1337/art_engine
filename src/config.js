@@ -46,10 +46,10 @@ const solanaMetadata = {
 // If you have selected Solana then the collection starts from 0 automatically
 const layerConfigurations = [
   {
-    growEditionSizeTo: 5,
+    growEditionSizeTo: 55,
     layersOrder: [
-      // { name: "SkeletalBody" },
-      { name: "Head", options: {layerVariations: 'Color', displayName: 'test',} },
+      { name: "SkeletalBody" }, 
+      { name: "Head", options: {layerVariations: 'Color', displayName: 'test'} },
       { name: "Back" },
       { name: "Legs" },
       { name: "Arms", options: {layerVariations: 'Color'} },
@@ -60,11 +60,11 @@ const layerConfigurations = [
   {
     growEditionSizeTo: 15,
     layersOrder: [
-      { name: "Body" },
-      { name: "Head"},
+      // { name: "Body" }, // omit trait to remove this layer
+      { name: "Head", options: {displayName: 'another test'} },
       { name: "Back" },
-      { name: "Legs" },
-      { name: "Arms" },
+      { name: "Legs", options: {hideFromMetadata: true} },
+      { name: "Arms", options: {layerVariations: 'Color', hideFromMetadata: true} },
       { name: "Mouth" },
       { name: "Eyes" },
     ],
@@ -128,7 +128,11 @@ const statBlocks = [
   },
 ];
 
+// Shuffle order of generation, if false will be in order of rarity
 const shuffleLayerConfigurations = false;
+
+// TODO Force the most unique creations to the front (i.e. tokenId 1, 2, 3, ...) 
+// const forceMostUniqueToFrontCount = 0 
 
 const debugLogs = false;
 
@@ -212,7 +216,7 @@ const rarity_config = {
 
 const layerVariations = [
   {
-    variationCount: 1,
+    variationCount: 1, // unused
     name: 'Color',
     variations: [
       'Blue',

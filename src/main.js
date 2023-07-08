@@ -46,7 +46,7 @@ const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
 
 let hashlipsGiffer = null;
-let allTraitsCount;
+let allTraitsCount = [];
 
 const buildSetup = () => {
   if (!fs.existsSync(buildDir)) {
@@ -76,15 +76,15 @@ const buildSetup = () => {
   }
 }
 
-const getRarityWeight = (_str) => {
+const getRarityWeight = (_str, _total) => {
   let nameWithoutExtension = _str.slice(0, -4);
   if (namedWeight) {
-  var nameWithoutWeight = String(
-    nameWithoutExtension.split(rarityDelimiter).pop()
-  )} else {
-  var nameWithoutWeight = Number(
-    nameWithoutExtension.split(rarityDelimiter).pop()
-  )}
+    var nameWithoutWeight = String(nameWithoutExtension.split(rarityDelimiter).pop());
+  } else if (exactWeight) {
+    var nameWithoutWeight = Math.floor(10000 * Number(nameWithoutExtension.split(rarityDelimiter).pop()) / _total);
+  } else {
+    var nameWithoutWeight = Math.floor(10000 / _total);
+  }
   return nameWithoutWeight;
 };
 
@@ -101,10 +101,13 @@ const cleanName = (_str) => {
 };
 
 const getElements = (path) => {
-  return fs
+  const files = fs
     .readdirSync(path)
     .filter((item) => !/(^|\/)\.[^\/\.]/g.test(item))
-    .map((i, index) => {
+  const variableTotal = exactWeight 
+  ? files.reduce((accumulator, currentValue) => accumulator + Number(currentValue.slice(0, -4).split(rarityDelimiter).pop()), 0)
+  : files.length
+  const elems = files.map((i, index) => {
       if (i.includes("-")) {
         throw new Error(`layer name can not contain dashes, please fix: ${i}`);
       }
@@ -113,9 +116,10 @@ const getElements = (path) => {
         name: cleanName(i),
         filename: i,
         path: `${path}${i}`,
-        weight: getRarityWeight(i),
+        weight: getRarityWeight(i, variableTotal),
       };
     });
+    return elems
 };
 
 const layersSetup = (layersOrder) => {
@@ -142,6 +146,10 @@ const layersSetup = (layersOrder) => {
       layerObj.options?.['layerVariations'] !== undefined
         ? layerObj.options?.['layerVariations']
         : undefined,
+    hiddenFromMetadata: 
+        layerObj.options?.['hiddenFromMetadata'] !== undefined
+          ? layerObj.options?.['hiddenFromMetadata']
+          : undefined,
     ogName: layerObj.name,
     
   }));
@@ -219,6 +227,7 @@ const addMetadata = (_dna, _edition) => {
 };
 
 const addAttributes = (_element) => {
+  if (_element.layer.hiddenFromMetadata) return;
   let selectedElement = _element.layer.selectedElement;
   attributesList.push({
     trait_type: _element.layer.name,
@@ -311,8 +320,9 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       opacity: layer.opacity,
       selectedElement: selectedElement,
       layerVariations: layer.layerVariations,
-      variant: layer.layerVariations != undefined ? (_dna.split('&').pop()).split(DNA_DELIMITER).shift() : '',
+      variant: variant,
       ogName: layer.ogName,
+      hiddenFromMetadata: layer.hiddenFromMetadata
     };
   });
   return mappedDnaToLayers;
@@ -579,25 +589,23 @@ const sortedMetadata = () => {
     return a - b;
   });
 
+  const writingPromises = [];
   for (let i = 0; i < filenames.length; i++) {
     if (!isNaN(filenames[i])) {
       let rawFile = fs.readFileSync(`${basePath}/build/json/${filenames[i]}.json`);
       let data = JSON.parse(rawFile);
-      fs.writeFileSync(`${basePath}/build/json/${data.edition}.json`, JSON.stringify(data, null, 2));
+      writingPromises.push(fs.promises.writeFile(`${basePath}/build/json/${data.edition}.json`, JSON.stringify(data, null, 2)))
       allMetadata.push(data);
     } 
   }
-  fs.writeFileSync(`${buildDir}/json/_metadata.json`, JSON.stringify(allMetadata, null, 2));
+  writingPromises.push(fs.promises.writeFile(`${buildDir}/json/_metadata.json`, JSON.stringify(allMetadata, null, 2)))
+  Promise.all(writingPromises).catch(console.error)
   console.log(`Ordered all items numerically in _metadata.json. Saved in ${basePath}/build/json`);
 }
 
 const saveMetaDataSingleFile = (_editionCount) => {
   let metadata = metadataList.find((meta) => meta.edition == _editionCount);
-  debugLogs
-    ? console.log(
-        `Writing metadata for ${_editionCount}: ${JSON.stringify(metadata)}`
-      )
-    : null;
+  if (debugLogs) console.log(`Writing metadata for ${_editionCount}: ${JSON.stringify(metadata)}`);
   fs.writeFileSync(
     `${buildDir}/json/${_editionCount}.json`,
     JSON.stringify(metadata, null, 2)
@@ -697,19 +705,31 @@ const startCreating = async () => {
   if (shuffleLayerConfigurations) {
     abstractedIndexes = shuffle(abstractedIndexes);
   }
-  debugLogs
-    ? console.log("Editions left to create: ", abstractedIndexes)
-    : null;
+  if (debugLogs) console.log('Editions left to create: ', abstractedIndexes);
+
+  let doSizeConvert = false;
+  let collectSizes = [0];
+  layerConfigurations.forEach((layerConfig, index) => {
+    if (layerConfig.growEditionSizeTo <= collectSizes[index]) doSizeConvert = true;
+    collectSizes.push(layerConfig.growEditionSizeTo);
+  });
+  if (doSizeConvert)
+    for (let index = 0; index < layerConfigurations.length; index += 1) {
+      if (index != 0)
+        layerConfigurations[index].growEditionSizeTo =
+          layerConfigurations[index - 1].growEditionSizeTo + layerConfigurations[index].growEditionSizeTo;
+    }
+
   while (layerConfigIndex < layerConfigurations.length) {
     const layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder
     );
     while (
-      editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo
+      editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo && editionCount <= toCreateNow
     ) {
 
-      let currentEdition = editionCount - 1;
-      let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
+      // let currentEdition = editionCount - 1;
+      // let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
       
       if (exactWeight && namedWeight) {
         throw new Error(`namedWeight and exactWeight can't be used together. Please mark one or both as false in config.js`);
@@ -719,7 +739,8 @@ const startCreating = async () => {
       let variant = newVariant.split(':').pop();
       let variantName = newVariant.split(':')[0];
 
-      let newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
+      // let newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
+      let newDna = namedWeight ? createDnaNames(layers, variant) : createDna(layers, variant);
 
       let duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 
@@ -792,9 +813,7 @@ const startCreating = async () => {
           if (gif.export) {
             hashlipsGiffer.stop();
           }
-          debugLogs
-            ? console.log("Editions left to create: ", abstractedIndexes)
-            : null;
+          if (debugLogs) console.log("Editions left to create: ", abstractedIndexes)
           saveImage(abstractedIndexes[0]+resumeNum);
           addMetadata(newDna, abstractedIndexes[0]+resumeNum);
           saveMetaDataSingleFile(abstractedIndexes[0]+resumeNum);
@@ -812,7 +831,7 @@ const startCreating = async () => {
         failedCount++;
         if (failedCount >= uniqueDnaTorrance) {
           console.log(
-            `You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
+            `More the ${uniqueDnaTorrance} duplicates created! You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
           );
           process.exit();
         }
