@@ -833,15 +833,9 @@ const startCreating = async () => {
     }
     layerConfigIndex++;
   }
-
-  Promise.all(writingPromises)
-    .then(() => {
-      // writeMetaData(JSON.stringify(metadataList, null, 2));
-      sortedMetadata();
-    })
-    .catch((err) => {
-      throw new Error(`Failed to create ALL image or metadata, you will need to rerun datlips`);
-    });
+  await Promise.all(writingPromises)
+  // writeMetaData(JSON.stringify(metadataList, null, 2));
+  sortedMetadata();
 };
 
 module.exports = { startCreating, buildSetup, getElements };
