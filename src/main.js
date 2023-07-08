@@ -78,15 +78,15 @@ const buildSetup = () => {
   }
 }
 
-const getRarityWeight = (_str) => {
+const getRarityWeight = (_str, _total) => {
   const nameWithoutExtension = _str.slice(0, -4);
   if (namedWeight) {
-  var nameWithoutWeight = String(
-    nameWithoutExtension.split(rarityDelimiter).pop()
-  )} else {
-  var nameWithoutWeight = Number(
-    nameWithoutExtension.split(rarityDelimiter).pop()
-  )}
+    var nameWithoutWeight = String(nameWithoutExtension.split(rarityDelimiter).pop());
+  } else if (exactWeight) {
+    var nameWithoutWeight = Math.floor(10000 * Number(nameWithoutExtension.split(rarityDelimiter).pop()) / _total);
+  } else {
+    var nameWithoutWeight = Math.floor(10000 / _total);
+  }
   return nameWithoutWeight;
 };
 
@@ -103,10 +103,13 @@ const cleanName = (_str) => {
 };
 
 const getElements = (path) => {
-  return fs
+  const files = fs
     .readdirSync(path)
     .filter((item) => !/(^|\/)\.[^\/\.]/g.test(item))
-    .map((i, index) => {
+  const variableTotal = exactWeight 
+  ? files.reduce((accumulator, currentValue) => accumulator + Number(currentValue.slice(0, -4).split(rarityDelimiter).pop()), 0)
+  : files.length
+  const elems = files.map((i, index) => {
       if (i.includes("-")) {
         throw new Error(`layer name can not contain dashes, please fix: ${i}`);
       }
@@ -115,9 +118,10 @@ const getElements = (path) => {
         name: cleanName(i),
         filename: i,
         path: `${path}${i}`,
-        weight: getRarityWeight(i),
+        weight: getRarityWeight(i, variableTotal),
       };
     });
+    return elems
 };
 
 const layersSetup = (layersOrder) => {
@@ -144,8 +148,11 @@ const layersSetup = (layersOrder) => {
       layerObj.options?.['layerVariations'] !== undefined
         ? layerObj.options?.['layerVariations']
         : undefined,
+    hiddenFromMetadata: 
+        layerObj.options?.['hiddenFromMetadata'] !== undefined
+          ? layerObj.options?.['hiddenFromMetadata']
+          : undefined,
     ogName: layerObj.name,
-    
   }));
   return layers;
 };
@@ -221,6 +228,7 @@ const addMetadata = (_dna, _edition) => {
 };
 
 const addAttributes = (_element) => {
+  if (_element.layer.hiddenFromMetadata) return
   let selectedElement = _element.layer.selectedElement;
   attributesList.push({
     trait_type: _element.layer.name,
@@ -313,8 +321,9 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       opacity: layer.opacity,
       selectedElement: selectedElement,
       layerVariations: layer.layerVariations,
-      variant: layer.layerVariations != undefined ? (_dna.split('&').pop()).split(DNA_DELIMITER).shift() : '',
+      variant: variant,
       ogName: layer.ogName,
+      hiddenFromMetadata: layer.hiddenFromMetadata
     };
   });
   return mappedDnaToLayers;
@@ -465,7 +474,7 @@ const createDnaNames = (_layers, _variant) => {
   return randNum.join(DNA_DELIMITER);
 };
 
-
+// Deprecated
 const createDnaExact = (_layers, _remainingInLayersOrder, _currentEdition, _variant) => {
   const randNum = [];
   const layerSizes = allLayerSizes();
@@ -564,9 +573,9 @@ const createDnaOG = (_layers) => {
   return randNum.join(DNA_DELIMITER);
 };
 
-// const writeMetaData = (_data) => {
-//   fs.writeFileSync(`${buildDir}/json/_metadata.json`, _data);
-// };
+const writeMetaData = (_data) => {
+  fs.writeFileSync(`${buildDir}/json/_metadata.json`, _data);
+};
 
 const sortedMetadata = () => {
   let files = fs.readdirSync(`${buildDir}/json`);
@@ -716,7 +725,7 @@ const startCreating = async () => {
       const newVariant = createVariation(layerVariations);
       const variant = newVariant.split(':').pop();
       const variantName = newVariant.split(':')[0];
-      const newDna = (exactWeight) ? createDnaExact(layers, remainingInLayersOrder, currentEdition, variant) : (namedWeight) ? createDnaNames(layers, variant) : createDna(layers, variant);
+      const newDna = namedWeight ? createDnaNames(layers, variant) : createDna(layers, variant);
       const duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 
       // if (isDnaUnique(dnaList, newDna)) {
@@ -801,7 +810,7 @@ const startCreating = async () => {
         failedCount++;
         if (failedCount >= uniqueDnaTorrance) {
           throw new Error(
-            `You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
+            `More the ${uniqueDnaTorrance} duplicates created! You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
           );
         }
       }
