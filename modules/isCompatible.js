@@ -148,58 +148,58 @@ const nestedStructure = async () => {
   });
 }
 
-var parents = [];
-const incompatibleTraits = [];
+// var parents = [];
+// const incompatibleTraits = [];
 
-const getAllPaths = (currentObj, path, initTrait, targetTrait, initLayerIndex) => {
+// const getAllPaths = (currentObj, path, initTrait, targetTrait, initLayerIndex) => {
 
-  const keys = Object.keys(currentObj);
+//   const keys = Object.keys(currentObj);
 
-  for (const key of keys) {
-    if (keys.includes(initTrait)) {
-      if (key != initTrait) {
-        if (!parents.includes(key)) {
-          parents.push(key);
-        }
-      }
-    }
+//   for (const key of keys) {
+//     if (keys.includes(initTrait)) {
+//       if (key != initTrait) {
+//         if (!parents.includes(key)) {
+//           parents.push(key);
+//         }
+//       }
+//     }
 
-    const newPath = initLayerIndex == 0 ? path : path.concat([key]);
+//     const newPath = initLayerIndex == 0 ? path : path.concat([key]);
 
-    if (key === targetTrait) {
-      incompatibleTraits.push(newPath);
-    } else if (typeof currentObj[key] === 'object') {
-      getAllPaths(currentObj[key], newPath, initTrait, targetTrait, initLayerIndex + 1);
-    }
-  }
-};
+//     if (key === targetTrait) {
+//       incompatibleTraits.push(newPath);
+//     } else if (typeof currentObj[key] === 'object') {
+//       getAllPaths(currentObj[key], newPath, initTrait, targetTrait, initLayerIndex + 1);
+//     }
+//   }
+// };
 
 const incompatibilities = {};
 
-function deepCopy(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
-
 const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _childIndex, _layerIndex) => {
-  parents = [];
-  // Get all paths for incompatible traits
-  if (_parentIndex === 0) {
-    const firstLayerObj = nest[_layerIndex];
-    getAllPaths(firstLayerObj, [_incompatibleParent], _incompatibleParent, _child, _parentIndex);
-  } else {
-    const root = Object.keys(nest[_layerIndex]);
-    for (let i = 0; i < root.length; i++) {
-      const currentLayerObj = nest[_layerIndex][root[i]];
-      getAllPaths(currentLayerObj, [root[i]], _incompatibleParent, _child, _parentIndex);
-    }
-  }
+  // parents = [];
+  // // Get all paths for incompatible traits
+  // if (_parentIndex === 0) {
+  //   const firstLayerObj = nest[_layerIndex];
+  //   getAllPaths(firstLayerObj, [_incompatibleParent], _incompatibleParent, _child, _parentIndex);
+  // } else {
+  //   const root = Object.keys(nest[_layerIndex]);
+  //   for (let i = 0; i < root.length; i++) {
+  //     const currentLayerObj = nest[_layerIndex][root[i]];
+  //     getAllPaths(currentLayerObj, [root[i]], _incompatibleParent, _child, _parentIndex);
+  //   }
+  // }
 
-  // Then filter them down to only full paths where both traits are present
-  const filteredIncompatibleTraits = incompatibleTraits.filter(path =>
-    path.includes(_incompatibleParent)
-  );
+  // // Then filter them down to only full paths where both traits are present
+  // const filteredIncompatibleTraits = incompatibleTraits.filter(path =>
+  //   path.includes(_incompatibleParent)
+  // );
 
-  var incompatibleParents;
+  // @Ricky, getAllPaths has now been MOSTLY depreciated. parents are generated separately, now we just have the matter
+  // of counts. current system counts filteredIncompatibleTraits and removes that number. We won't have that anymore, so 
+  // need to find a new way to calculate those values. 
+
+  let incompatibleParents;
 
   if (!incompatibilities[_child]) {
     incompatibleParents = [];
@@ -208,6 +208,16 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
   }
 
   incompatibleParents.push(_incompatibleParent);
+
+  let parents = []
+
+  let allParents = Object.keys(compatibility[layers[_layerIndex][_parentIndex]]);
+
+  allParents.forEach((parentTrait) => {
+    if(!incompatibleParents.includes(parentTrait)) {
+      parents.push(parentTrait);
+    }
+  });
 
   let incompatibilty = {
     incompatibleParents,
@@ -232,32 +242,32 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
     incompatibilities[_child].parents = remainingParents
   }
 
-  const removeCombination = filteredIncompatibleTraits.length;
-  const layer = layers[_layerIndex][_childIndex];
+  // const removeCombination = filteredIncompatibleTraits.length;
+  // const layer = layers[_layerIndex][_childIndex];
 
-  maxCombinations -= removeCombination;
-  traitCounts[_layerIndex][layer][_child] -= removeCombination;
+  // maxCombinations -= removeCombination;
+  // // traitCounts[_layerIndex][layer][_child] -= removeCombination;
   
-  const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  // const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 
-  bar1.start(removeCombination, 0);
+  // bar1.start(removeCombination, 0);
 
-  // Delete each item at specified paths
-  for (let i = 0; i < filteredIncompatibleTraits.length; i++) {
-    bar1.update(i + 1);
-    const pathToDelete = filteredIncompatibleTraits[i];
-    let object = nest[_layerIndex];
+  // // Delete each item at specified paths
+  // for (let i = 0; i < filteredIncompatibleTraits.length; i++) {
+  //   bar1.update(i + 1);
+  //   const pathToDelete = filteredIncompatibleTraits[i];
+  //   let object = nest[_layerIndex];
 
-    // Handle array-based paths
-    for (let i = 0; i < pathToDelete.length - 1; i++) {
-      object = object[pathToDelete[i]];
-      if (!object) return; // Early return if part of the path doesn't exist
-    }
+  //   // Handle array-based paths
+  //   for (let i = 0; i < pathToDelete.length - 1; i++) {
+  //     object = object[pathToDelete[i]];
+  //     if (!object) return; // Early return if part of the path doesn't exist
+  //   }
 
-    delete nest[_layerIndex][pathToDelete[pathToDelete.length - 1]];
-  }
+  //   delete nest[_layerIndex][pathToDelete[pathToDelete.length - 1]];
+  // }
 
-  bar1.stop();
+  // bar1.stop();
 
   console.log(`${_incompatibleParent} marked incompatible with ${_child}`);
 }
@@ -310,28 +320,146 @@ const checkCompatibility = async () => {
   await markIncompatible(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
 }
 
-function calculateMax(structure) {
-  let count = 0;
+//Re-create nested structures with incompatibilities taken into account
+let incompatibleNest = {};
+let compatibleNest = {};
 
-  function traverse(obj, path) {
-    for (const key in obj) {
-      const currentPath = path.concat(key);
-      
-      if (typeof obj[key] === 'object' && Object.keys(obj[key]).length === 0) {
-        count++;
+const incompatibleNestedStructure = async () => {
+  const topLayers = [];
+
+  layers.forEach((layersOrder, index) => {
+    let tempTopLayers = [];
+    layersOrder.forEach((layer) => {
+      const traits = Object.keys(compatibility[layer]);
+      tempTopLayers.push(traits);
+    });
+    topLayers[index] = tempTopLayers;
+  });
+
+  topLayers.forEach((layersOrder, index) => {
+    incompatibleNest[index] = {};
+    const lastLayerIndex = layersOrder.length - 1
+    
+    let previousLayer = {};
+    const restricted = Object.keys(incompatibilities);
+    // incompatible paths
+    restricted.forEach((restrictedTrait) => {
+      let compatibilityFlag = false;
+      let parents = incompatibilities[restrictedTrait].parents;
+      let childIndex = incompatibilities[restrictedTrait].childIndex;
+      let parentIndex = incompatibilities[restrictedTrait].parentIndex;
+      // Add all paths containing incompatibilities
+      for ( let i = lastLayerIndex; i >= 0; i--) {
+        if (i == lastLayerIndex) { // Last layer
+          let endOfNest = {};
+          if (i == childIndex) {
+            endOfNest[restrictedTrait] = {};
+            compatibilityFlag = true;
+          } else {
+            layersOrder[i].forEach((trait) => {
+              endOfNest[trait] = {};
+            });
+          }
+          previousLayer = endOfNest;
+        } else { // Everything else
+          let lStruct = {};
+          if (i == childIndex) {
+            lStruct[restrictedTrait] = previousLayer;
+            compatibilityFlag = true;
+          } else if (i == parentIndex && compatibilityFlag) {
+            parents.forEach((trait) => {
+              lStruct[trait] = previousLayer;
+            });
+            previousLayer = lStruct;
+          } else {
+            layersOrder[i].forEach((trait) => {
+              lStruct[trait] = previousLayer;
+            });
+            previousLayer = lStruct;
+          }
+          previousLayer = lStruct;
+        }
+        incompatibleNest[index][restrictedTrait] = previousLayer;
       }
-      
-      if (typeof obj[key] === 'object') {
-        traverse(obj[key], currentPath);
+    });
+  });
+}
+
+const compatibleNestedStructure = async => {
+  const topLayers = [];
+  let layerCounts = {};
+
+  layers.forEach((layersOrder, index) => {
+    let tempTopLayers = [];
+    layerCounts[index] = {};
+    layersOrder.forEach((layer) => {
+      const traits = Object.keys(compatibility[layer]);
+      tempTopLayers.push(traits);
+      layerCounts[index][layer] = traits.length;
+    });
+    
+    topLayers[index] = tempTopLayers;
+  });
+
+  topLayers.forEach((layersOrder, index) => {
+    const lastLayerIndex = layersOrder.length - 1
+    
+    let previousLayer = {};
+
+    // Add all paths excluding incompatibilities
+    for ( let i = lastLayerIndex; i >= 0; i--) {
+      let restricted = [];
+      for (const incompatibility in incompatibilities) {
+        if (incompatibilities[incompatibility].layerIndex == index && incompatibilities[incompatibility].childIndex == i) {
+          restricted.push(incompatibility);
+        } 
       }
+
+      if (i == lastLayerIndex) { // Last layer
+        let endOfNest = {};
+        layersOrder[i].forEach((trait) => {
+          if (!restricted.includes(trait)) {
+            endOfNest[trait] = {};
+          } else {
+            let previousLayerCount = 1;
+            
+            for (let j = 0; j < i; j++) {
+              let previousLayer = layers[index][j]
+              previousLayerCount *= layerCounts[index][previousLayer];
+            }
+            traitCounts[index][layers[index][i]][trait] -= previousLayerCount;
+            maxCombinations -= previousLayerCount;
+          }
+        });
+        previousLayer = endOfNest;
+      } else { // Everything else
+        let lStruct = {}
+        layersOrder[i].forEach((trait) => {
+          if (!restricted.includes(trait)) {
+            lStruct[trait] = previousLayer;
+          } else {
+            let previousLayerCount = 1;
+            
+            for (let j = 0; j < i; j++) {
+              let previousLayer = layers[index][j]
+              previousLayerCount *= layerCounts[index][previousLayer];
+            }
+            traitCounts[index][layers[index][i]][trait] -= previousLayerCount;
+            maxCombinations -= previousLayerCount;
+          }
+        });
+        previousLayer = lStruct;
+      }
+      compatibleNest[index] = previousLayer;
     }
-  }
 
-  traverse(structure, []);
-  return count;
+  });
 }
 
 const countAndSave = () => {
+  incompatibleNestedStructure();
+  compatibleNestedStructure();
+  
   console.log(`With the defined incompatibilites and available traits, `+
     `a maximum of ${maxCombinations} images can be generated`);
 
@@ -343,4 +471,4 @@ const countAndSave = () => {
   console.log(`Compatibility files created in ${basePath}/compatibility/`);
 }
 
-module.exports = { listCompatibility, nestedStructure, markIncompatible, checkCompatibility, countAndSave, traitCounts, nest };
+module.exports = { listCompatibility, nestedStructure, markIncompatible, checkCompatibility, countAndSave, traitCounts, incompatibleNest,  compatibleNest};

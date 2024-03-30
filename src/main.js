@@ -43,11 +43,10 @@ var dnaList = new Set();
 const DNA_DELIMITER = "-";
 const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
-// const nest = `${basePath}/compatibility/nest.json`;
 const incompatible = `${basePath}/compatibility/compatibility.json`
-const { traitCounts, nest } = require(`${basePath}/modules/isCompatible.js`);
+const { traitCounts, incompatibleNest, compatibleNest } = require(`${basePath}/modules/isCompatible.js`);
 const cliProgress = require('cli-progress');
-let compatibility = nest;
+// let compatibility = nest;
 let incompatibilities;
 
 let hashlipsGiffer = null;
@@ -81,8 +80,6 @@ const buildSetup = () => {
       dnaList.add(item);
     });
   }
-  // let rawNestData = fs.readFileSync(nest);
-  // compatibility = JSON.parse(rawNestData);
   let rawCompatibleData = fs.readFileSync(incompatible);
   incompatibilities = JSON.parse(rawCompatibleData);
 }
@@ -352,9 +349,9 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
   let mappedDnaToLayers = _layers.map((layer, index) => {
 
     if (_dna.split(DNA_DELIMITER)[index] == undefined) {
-      throw new Error(`Something went wrong. There may be an issue in your ${layer.name} folder,`+
-      ` but this issue hasn't been fully debugged yet. Please try again, and if you continue getting` +
-      ` this error, review weights & file types. NOTE: All traits MUST contain a weight!`);
+      console.log(_dna);
+      console.log(allTraitsCount);
+      throw new Error(`This error should not happen anymore. Please send @datboi details`);
     }
 
     let selectedElement = layer.elements.find(
@@ -368,15 +365,8 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
 
-    /*
-    idk, I still fucking hate these errors. Please fully debug and figure out wtf they're even for
-    I know I wrote them, but I can't figure out why 
-    */
-
     if (_dna.search(selectedElement.name) < 0) {
-      throw new Error(`Something went wrong. There may be an issue in your ${layer.name} folder,`+
-      ` but this issue hasn't been fully debugged yet. Please try again, and if you continue getting` +
-      ` this error, review weights & file types. NOTE: All traits MUST contain a weight!`);
+      throw new Error(`This error should not happen anymore. Please send @datboi details`);
     }
 
     return {
@@ -456,7 +446,7 @@ const createDnaExact = (_layers, layerConfigIndex) => {
         parentIndex = incompatibilities[incompatibility].parentIndex;
         childIndex = incompatibilities[incompatibility].childIndex
         compatibleCount = incompatibilities[incompatibility].maxCount;
-
+        
         if(compatibleCount == 0) {
           console.log(`All ${compatibleChild} distributed`);
           delete incompatibilities[incompatibility];
@@ -465,19 +455,21 @@ const createDnaExact = (_layers, layerConfigIndex) => {
     });
   }
 
-  // let layerSizes = allLayerSizes();
-  _layers.forEach((layer) => {
-    // Fetch compatible traits for current layer based on previous selections
-    if (restrictedGeneration && layer.id === parentIndex && compatibleCount > 0) {
-      var compatibleTraits = compatibleParents;
-      incompatibilities[compatibleChild[0]].maxCount--;
-    } else if (restrictedGeneration && layer.id === childIndex && compatibleCount > 0) {
-      var compatibleTraits = compatibleChild;
+  _layers.forEach((layer, index) => {
+    let nest = {};
+    
+    if (restrictedGeneration && compatibleCount > 0) {
+      nest = incompatibleNest[layerConfigIndex][compatibleChild]
+      if (layer.id === parentIndex) {
+        incompatibilities[compatibleChild[0]].maxCount--;
+      }
     } else {
-      var compatibleTraits = Object.keys(nestLookup.reduce(
-        (a, trait) => a[trait], compatibility[layerConfigIndex]
-      ));
+      nest = compatibleNest[layerConfigIndex];
     }
+
+    let compatibleTraits = Object.keys(nestLookup.reduce(
+      (a, trait) => a[trait], nest
+    ));
 
     let elements = []
     for (let i = 0; i < compatibleTraits.length; i++) {
@@ -501,7 +493,6 @@ const createDnaExact = (_layers, layerConfigIndex) => {
 
     // We keep the random function here to ensure we don't generate all the same layers back to back.
     let random = Math.floor(Math.random() * totalWeight);
-
     for (var i = 0; i < elements.length; i++) {
       // Check allTraitsCount for the selected element 
       let lookup = allTraitsCount[layer.name][elements[i].name];
@@ -655,7 +646,6 @@ const scaleWeight = (layer, layerWeight, layerConfigIndex) => {
 
     layer.elements.forEach((element) => {
       const scaledWeight = Math.max(1, Math.round((element.weight / totalWeight) * layerWeight));
-      // maxCount = countInstances(compatibility, element.name);
       maxCount = traitCounts[layerConfigIndex][layer.ogName][element.name];
 
       allCounts[element.name] = maxCount;
@@ -712,7 +702,6 @@ const scaleWeight = (layer, layerWeight, layerConfigIndex) => {
     }
   } else if (exactWeight) {
     layer.elements.forEach((element) =>{
-      // maxCount = countInstances(compatibility, element.name);
       maxCount = traitCounts[layerConfigIndex][layer.ogName][element.name];
 
       if (element.weight > maxCount) {
@@ -798,7 +787,7 @@ const startCreating = async () => {
       scaleWeight(layer, layersOrderSize, layerConfigIndex);
     });
     allTraitsCount = traitCount(layers);
-    // console.log(allTraitsCount)
+    console.log(allTraitsCount)
     debugLogs ? console.log(allTraitsCount) : null;
     while (
       // editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo
