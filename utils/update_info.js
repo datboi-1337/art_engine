@@ -3,9 +3,9 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const fs = require("fs");
 
 const {
+  collectionName,
+  symbol,
   baseUri,
-  description,
-  namePrefix,
   network,
   solanaMetadata,
 } = require(`${basePath}/src/config.js`);
@@ -16,16 +16,21 @@ let data = JSON.parse(rawdata);
 
 data.forEach((item) => {
   if (network == NETWORK.sol) {
-    item.name = `${namePrefix} #${item.edition}`;
-    item.description = description;
+    item.symbol = symbol;
     item.creators = solanaMetadata.creators;
+    item.collection = solanaMetadata.collection;
+  } else if (network == NETWORK.sei) {
+    item.symbol = symbol;
+    item.collection = collectionName;
   } else {
-    item.name = `${namePrefix} #${item.edition}`;
-    item.description = description;
     item.image = `${baseUri}/${item.edition}.png`;
   }
   fs.writeFileSync(
     `${basePath}/build/json/${item.edition}.json`,
+    JSON.stringify(item, null, 2)
+  );
+  fs.writeFileSync(
+    `${basePath}/build/json-drop/${item.edition}`,
     JSON.stringify(item, null, 2)
   );
 });
@@ -36,15 +41,19 @@ fs.writeFileSync(
 );
 
 if (network == NETWORK.sol) {
-  console.log(`Updated description for images to ===> ${description}`);
-  console.log(`Updated name prefix for images to ===> ${namePrefix}`);
+  console.log(`Updated symbol to ${symbol}`);
   console.log(
-    `Updated creators for images to ===> ${JSON.stringify(
+    `Updated creators to ===> ${JSON.stringify(
       solanaMetadata.creators
     )}`
   );
+  console.log(`Updated collection to ===> ${JSON.stringify(
+    solanaMetadata.collection
+    )}`
+  );
+} else if (network == NETWORK.sei) {
+  console.log(`Updated symbol to ${symbol}`);
+  console.log(`Updated collection to ${collectionName}`);
 } else {
   console.log(`Updated baseUri for images to ===> ${baseUri}`);
-  console.log(`Updated description for images to ===> ${description}`);
-  console.log(`Updated name prefix for images to ===> ${namePrefix}`);
 }

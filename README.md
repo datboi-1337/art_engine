@@ -1,9 +1,12 @@
-This is a fork of Hashlip's art engine. It is currently a *Work in Progress* as more features are planned to be added. 
+This is a fork of Hashlip's art engine with several additional features and quality of life changes
 
-🛠️🛠️ Please note that the README is barebones atm as I'm still working on feature implementation, but if you have any questions, please feel free to ask me in the various channels I can be reached. 
+🛠️🛠️ More features being added 🛠️🛠️
 
 <br/>
+If you have any questions, please feel free to ask me in the various channels I can be reached (Discord will be the most consistent)
 <br/>
+<br/>
+
 
 ## Relevant links / socials,
 
@@ -12,10 +15,23 @@ This is a fork of Hashlip's art engine. It is currently a *Work in Progress* as 
 <br/>
 <br/>
 
-# Additional Features in this fork
+# Installation notes
+Use Node 18-20
+
+# Enhanced Features in this fork
+
+## More efficient generation
+- [Split metadata and image generation](#split-metadata-and-image-generation)
+
+## Set incompatible layers
+- [Guided wizard for setting incompatible traits](#incompatibility-wizard)
+  - [Incompatibility wizard example](#incompatibility-wizard-example)
+  - [Bulk incompatibility entry (bulk)](#advanced-incompatibility)
+
+## Additional network selections
+- [Metadata standard output for Ethereum, Solana, and SEI](#network-selection)
 
 ## Named rarity weight
-
 - [Use named weights instead of numbers in filename](#use-named-weight-instead-of-filename)
   - [Named weight example](#named-weight-example)
 
@@ -25,8 +41,8 @@ This is a fork of Hashlip's art engine. It is currently a *Work in Progress* as 
   - [Exact weight example](#exact-weight-example)
 
 ## Layer Variation
-- [Assign layerVariations to layers to ensure they match other layers with that variation](#layer-variation-system)
-  - [layerVariations example](#layer-variation-example)
+- [Assign layer variations to ensure layers with that variation match eachother](#layer-variation-system)
+  - [layer variation example](#layer-variation-example)
 
 ## Add stat blocks
 - [Assign randomized stats within defined range to each NFT!](#stat-blocks)
@@ -37,25 +53,23 @@ This is a fork of Hashlip's art engine. It is currently a *Work in Progress* as 
   - [Extra attributes example](#extra-attributes-example)
 
 ## Resume creation
-
 - [Generate NFT in stages](#generate-nft-in-stages)
-  - [resumeNum Example](#resumenum-example)
-
-## Scaled creation
-
-- [Generate NFT in smaller sets for testing](#generate-nft-in-smaller-sets-for-testing)
-  - [scaleSize Example](#scalesize-example)
+  - [resumeNum example](#resumenum-example)
 
 ## Allow duplicate images/metadata
-
 - [Allow duplicate images to be duplicated](#allow-duplicates)
 
 ## Define DPI in format
-
 - [Define DPI in addition to resolution](#define-dpi)
 
-## Utils
+## Individual name and description per layer configuration
+- [Assign unique name and description per layer configuration](#unique-name-and-description)
 
+## Set layer configurations to desired size
+- [set growEditionSizeTo per layer configuration, instead of cumulatively](#non-cumulative-growEditionSizeTo)
+  - [growEditionSizeTo example](#growEditionSizeTo-example)
+
+## Utils
 - [cleanMetadata](#cleanmetadata)
 - [removeAttributes](#removeattributes)
 - [renameAttributes](#renameattributes)
@@ -63,82 +77,151 @@ This is a fork of Hashlip's art engine. It is currently a *Work in Progress* as 
 - [recreateAndSortMetadata](#recreateandsortmetadata)
 - [rarityFromMetadata](#rarityfrommetadata)
 
-### Notes
+### Planned upcoming features coming soon
 
-- Work in Progress
+- GIF generation 👀
+- Image/Metadata IPFS upload
+- Adding bulk entry to incompatibility wizard
+- Adding terminal interaction for most metadata manipulation utilities to avoid direct script editing
+- Cleanup terminal output for rarity during generation
 
+# General use
+0) (first time) run `npm install`
+1) Import layer files
+2) Define collectionSize in config.js
+3) Define network in config.js
+4) Define general metadata (and solanaMetadata of generating for Solana)
+5) Update layerConfigurations in config.js. Be sure to define them in the order they are to be selected. First definition is the 'bottom' or 'back' of the image. 
+6) Run generation with `npm run generate`
+7) Follow prompts to define any incompatibilities
+8) Review metadata once it's been generated, and follow the prompts to generate images if metadata is generated to your specification. 
+
+# Split metadata and image generation
+All metadata will be generated immediately upon running `npm run generate`. This allows generation to happen much faster, and provides a trait breakdown in the terminal upon completion, with a prompt to continue to photo generation. Any issues with metadata/compatibility can be seen and rectified much faster, then when all is well, image generation can take place. 
+![photoGeneration](media/proceed_to_photo_generation.png)
+
+# Incompatibility Wizard
+You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
+
+# Incompatibility wizard example
+With the default layers in this fork, we can define the following incompatibility (arbitraily chosen for demonstration): Eyes/EyeScar is not compatible with Back/StrapOnShark. We can tell the engine not to generate those items together like so:
+<br/>
+
+1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
+![incompatibility1](media/incompatibility_prompt_1.png)
+2) Select layer configuration index (if applicable)
+![incompatibility2](media/incompatibility_prompt_2.png)
+3) Select the layer your *first* trait is located in
+![incompatibility3](media/incompatibility_prompt_3.png)
+4) Select the first trait
+![incompatibility4](media/incompatibility_prompt_4.png)
+5) Select the layer your *second* trait is located in
+![incompatibility5](media/incompatibility_prompt_5.png)
+6) Select the second trait
+![incompatibility6](media/incompatibility_prompt_6.png)
+7) Allow engine to calculate new compatibile paths. **NOTE** Depending on your trait count, this may take some time. 
+![incompatibility7](media/incompatibility_prompt_7_loading.png)
+8) You will be prompted again to enter any more incompatibilities you may have
+![incompatibility8](media/incompatibility_prompt_8.png)
+
+<br/>
+In cases where generation needs to be run again, or incompatibilities have been defined manually (see Advanced incompatibility below), you will be prompted to review existing incompatibilities and asked to either proceed with generation, add more incompatibilities, or remove all incompatibilities to start fresh (you will be prompted to add incompatibilities again, if needed).
+
+![incompatibility9](media/incompatibility_prompt_9_existing.png)
+
+# Advanced incompatibility
+If you need to define multiple incompatibilities, and you don't want to use the wizard, you *can* define them manually by editing compatibility/compatibility.json, adding an object like the example below. 
+**NOTE** This should really only be used by advanced users. If this is defined incorrectly, it's possible for some of your incompatibilities to not work properly!
+```js
+{
+  "EyeScar": {
+    "incompatibleParent": "StrapOnShark",
+    "parents": [
+      "BetaFins",
+      "Blowhole",
+      "DolphinFin",
+      "DorsalFins",
+      "SharkFin",
+      "TurtleShell"
+    ],
+    "parentIndex": 2,
+    "childIndex": 4,
+    "layerIndex": 0,
+    "maxCount": 0
+  }
+}
+```
+
+# Network selection
+This fork will generate metadata for Ethereum, Solana, and SEI. Most EVM chains follow Ethereum metadata standards. Please be sure to define all General metadata in config.js, as well as `solanaMetadata` if generating for Solana. 
 
 # Use named weights instead of numbers in filename
-This fork gives the option to use a simpler weight system by using common rarity names (Common, Uncommon, Rare, Epic, Legenedary, and Mythic) instead of numbers. Weight will be calculated based on named value.
+This fork gives the option to use a simpler weight system by using common rarity names (Common, Uncommon, Rare, Epic, Legenedary, and Mythic) instead of numbers. Weight will be calculated based on named value. Please reference `rarity_config` in config.js for more detail. The values in `rarity_config` can be edited, if needed. 
 
 ## Named weight example
-This repository is set up to use named weights by default. The layers are already using named weights
-
-You can switch back to using numbered weights by setting `namedWeight` to false in config.js. 
+![namedVsNumbered](media/named_vs_numbered_weight.png)
 
 ```js
-// Set this to true if you want to use named rarity instead of numbers. 
-const namedWeight = true;
+const rarity_config = {
+  Mythic: 1,
+  Legendary: 6,
+  Epic: 15,
+  Rare: 31,
+  Uncommon: 56,
+  Common: 100,
+};
 ```
-![namedVsNumbered](https://user-images.githubusercontent.com/92766571/179042357-3d045785-807e-48e5-b9bb-c789d146e905.png)
+You can view `rarity_config` in config.js to understand the differences between rarities. Something marked 'Common' will appear 100x more than something marked 'Legendary'. **NOTE**: Even with such a difference between two traits, all traits will be generated at least once. 
 
 # Use exact weight instead of rng
 This fork gives the option to use define exact counts of traits rather than using weight to randomly determine counts of traits. 
 
 ## Exact weight example
-To use exact weight system, set exactWeight to true in config.js. When this option is enabled, the weight any given trait is set to will be the exact number of times that trait appears in the collection. ie: `trait#50.png` will appear 50 times throughout the collection exactly. <br/>
+To use exact weight system, set `exactWeight` to true in config.js. When this option is enabled, the weight of any given trait is set to will be the exact number of times that trait appears in the collection. ie: `trait#50.png` will appear exactly 50 times throughout the collection. <br/>
 
-**PLEASE NOTE**: exactWeight and namedWeight can not be used together at this time! 
+**PLEASE NOTE**: All weights in a given folder must add up to the layersOrder edition size! Traits with the same names across multiple layersOrders will be counted separately!
 
 ```js
 const exactWeight = true;
 ```
 
 # Layer variation system
-Use this option to assign a 'variation' to multiple layers. The most common use-case for this option would be ensuring certain traits are the same color or skin pattern. For any trait that has variations, put a placeholder in the normal layer's folder with the desired weight, then put each of it's variations into the layer's '-variant' folder named with the variant name instead of a weight.
-Define your variations in the layerVariations const in config.js. <br/>
-
-**NOTE**: If a layer has variations, it must contain *all* the variants. For example, the base images in this fork have 4 variants defined (Blue, Green, Purple, and Red), so any layer using layerVariations must include a variant for each of those colors. 
+Use this option to assign a 'variation' to multiple layers. The most common use-case for this option would be ensuring certain traits are the same color or skin pattern. To use the layer variation system, define a layer called 'Variant' in your layer configuration. Populate the 'Variant' folder with blank png, named and weighted according to your variants. Next, create folders in each trait folder where you want the variation applied, and name them after relevent variants. The engine will select a variant, then any trait chosen will adhere to that variant if possible. 
+**NOTE** 'Variant' is a restricted layer name. If your collection needs a layer called 'Variant', please be sure to name the folder something else and use the `displayName` option to name your layer appropriately. <br/>
+**NOTE** If using the variant system, 'Variant' *must* be the first defined layer. <br/>
+**NOTE** If a chosen trait does not have a matching variant, it's default trait file will be rendered in the final image. 
 
 ## Layer variation example
-In this fork, there are currently two layers with variations (Arms and Head). If you look at the file structure, you will see each have '-variant' folders with each trait duplicated the number of colors edfined in layerVariations.
-Define layerVariations:
+In this fork, there are currently two layers with variations (Arms and Head). If you look at the file structure, you will see a Variant folder containing Blue, Green, Purple, and Red blank pngs, and both the Arms and Head folders have nested Blue, Green, Purple, and Red folders containing all traits with compatible variant versions. <br/>
+- Base 'Variant' folder:
+![variantFolder1](media/main_variant_folder.png)
+- Arms Trait folder contents:
+![variantFolder2](media/variant_folder_in_trait_folder.png)
+- Arms Trait variant (blue) folder contents:
+![variantFolder3](media/variant_in_trait_folder_example_blue.png)
+- Arms Trait variant (green) folder contents:
+![variantFolder3](media/variant_in_trait_folder_example_green.png)
+<br/>
+
+For this setup, the layer configuration should look like this. **Please note** that the 'Variant' folder is defined as the first layer, and that it's using the `displayName` option to use the name 'Color' in the final metadata. 
+
 ```js
-const layerVariations = [
   {
-    variationCount: 1,
-    name: 'Color',
-    variations: [
-      'Blue',
-      'Green',
-      'Purple',
-      'Red',
-    ],
-    Weight: [
-      35,
-      25,
-      25,
-      15,
+    growEditionSizeTo: collectionSize/2,
+    namePrefix: collectionName,
+    description: description,
+    layersOrder: [
+      { name: "Variant", options: { displayName: "Color" } },
+      { name: "Arms" },
+      { name: "Back" },
+      { name: "Body" },
+      { name: "Eyes" },
+      { name: "Head" },
+      { name: "Legs" },
+      { name: "Mouth" },
     ],
   },
-];
 ```
-Determine which layers need variants:
-```js
-{ name: "Arms", options: {layerVariations: 'Color'} },
-```
-Base folder for the trait (Arms) as well as it's variant folder (Arms-variant):
-<br/>
-![b3b893cc92e9779c35cb6e1ebc14c798](https://user-images.githubusercontent.com/92766571/183504630-bf9fc530-318b-42d2-86ac-bdcbceafddb4.png)
-<br/>
-Base trait folder contents. These files should be named the same way any other trait would be (trait#weight):
-<br/>
-![41bfc893d8e659dc8177664efbeb1ed7-1](https://user-images.githubusercontent.com/92766571/183504941-9dcb384b-f884-4a3e-b5a4-dc83fdc2aea0.png)
-<br/>
-Variant folder contents. These files should be named with the traits name (exactly matching that in the base trait folder) followed by a space and the variant's name (the four colors in this case):
-<br/>
-![316d7b63f6010d123e4b396c4fd32126-1](https://user-images.githubusercontent.com/92766571/183505249-0d752e61-4ed8-46ca-a084-3055f3bf1302.png)
-<br/>
 
 # Stat blocks
 Add any number of stats to your tokens! All examples are from the [Opensea Metadata Standards](https://docs.opensea.io/docs/metadata-standards). Please visit to see how each display_type will look on Opensea.  
@@ -198,29 +281,6 @@ const resumeNum = 0;
 const importOldDna = false;
 ```
 
-# Generate NFT in smaller sets for testing
-Adjusting every `growEditionSizeTo` anytime you want to test something out on a smaller scale can be frustrating. This system allows you to set your `collectionSize` once, then your `growEditionSizeTo` definitions are replaced with scaleSize. Ensure the numbers fed to that function add up to your `collectionSize`, and you can change `toCreateNow` on the fly to whatever scale you want to test. All rarity is scaled where applicable, so no need to make weight adjustments!
-## scaleSize Example
-By default, this repository is not using this system. To enable it, simply change `growEditionSizeTo` to use `scaleSize()` instead of a number. 
-```js
-growEditionSizeTo: scaleSize(300),
-// instead of 
-growEditionSizeTo: 300,
-```
-
-**NOTE**: If you do use this feature, `collectionSize` and `toCreateNow` must match to create the full collection!
-
-**TIP**: To avoid potential scaling issues, you can set your final layersOrder to equal `collectionSize`. 
-
-```js
-const collectionSize = 1000;
-const toCreateNow = 1000;
-
-const scaleSize = (num) => {
-  if (collectionSize === toCreateNow) return num;
-  return Math.ceil((num / collectionSize) * toCreateNow);
-};
-```
 # Allow duplicates 
 If you want duplicates in your collection, you can set the allowDuplicates flag to true. 
 ```js
@@ -238,10 +298,53 @@ const format = {
 };
 ```
 
+# Unique name and description
+`namePrefix` and `description` have been moved to be contained within `layerConfigurations`. This allows separate names and descriptions based on the specific traits being selected.  
+
+# Non cumulative growEditionSizeTo
+`growEditionSizeTo` is no longer cumulatively defined. You can now set this number to simply represent the number of images you want generated within that layer configuration. <br/>
+**NOTE**: `collectionSize` must be defined, and match the total of your `growEditionSizeTo`s. 
+
+## growEditionSizeTo example
+The default setup in config.js demonstrates this system:
+```js
+const layerConfigurations = [
+  {
+    // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
+    growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
+    namePrefix: collectionName,
+    description: description,
+    layersOrder: [
+      { name: "Variant", options: { displayName: "Color" } },
+      { name: "Arms" },
+      { name: "Back" },
+      { name: "Body" },
+      { name: "Eyes" },
+      { name: "Head" },
+      { name: "Legs" },
+      { name: "Mouth" },
+    ],
+  },
+  {
+    growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
+    namePrefix: 'Alternate Name',
+    description: 'Alternate Description for this set of tokens',
+    layersOrder: [
+      { name: "Arms" },
+      { name: "Back" },
+      { name: "Body" },
+      { name: "Head" },
+      { name: "Mouth" },
+    ],
+  },
+];
+```
 # Utils
 
 ## cleanMetadata
-This utility gives the option to remove some commonly requested items. Set any to true to remove them from generated metadata. Original metadata is preserved, and clean metadata is saved to build_new/json
+This utility gives the option to remove some commonly requested items. Set any to true to remove them from generated metadata. Original metadata is preserved, and clean metadata is saved to build_new/json <br/>
+
+**NOTE**: These elements are used as keys in other utilities, so please be sure to backup your metadata before running this, and only run AFTER running any other metadata manipulation utility (rename, update URI, etc.).
 
 ```js
 let removeDna = true;
@@ -332,16 +435,3 @@ includeTraitPercentages will add occurence percentages to all other traits like:
   "value": "Red (12.00%)"
 }
 ```
-
-<br/>
-<br/>
-<br/>
-
-🛠️🛠️ Note again that the engine and *especially* documentation are a work in progress. Both will be improved upon further. 
-
-# More features in progress / on the way
-
-## Bring items to the front
-Mark specific items to be moved the first n of the collection for sequential minting.
-## Add option to mint exact number of specific traits. 
-## Build robust nested layer functionality to account for incompatibilities/forced combinations

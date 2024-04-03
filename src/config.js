@@ -2,20 +2,9 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-const collectionSize = 1000;
-const toCreateNow = 30;
-
-// If using scaleSize system, simply change growEditionSizeTo to use scaleSize(#) instead of #
-const scaleSize = (num) => {
-  if (collectionSize === toCreateNow) return num;
-  return Math.ceil((num / collectionSize) * toCreateNow);
-};
+const collectionSize = 65;
 
 // ********* Advanced weight options *********
-// Note: only one of these options can be marked true at once. 
-
-// Set this to true if you want to use named rarity instead of numbers. 
-const namedWeight = true;
 /* 
 * Set this to true if you want to use EXACT weights. 
 * Note that your weights must add up to the total number
@@ -23,16 +12,17 @@ const namedWeight = true;
 */
 const exactWeight = false;
 
-
+// Options: eth, sol, sei
+// NOTE: using 'eth' will generate metadata compatible with most EVM chains
 const network = NETWORK.eth;
 
-// General metadata for Ethereum
-const namePrefix = "Your Collection";
+// General metadata
+const collectionName = "Your Collection";
+const symbol = "YC";
 const description = "Remember to replace this description";
 const baseUri = "ipfs://TESTING";
 
 const solanaMetadata = {
-  symbol: "YC",
   seller_fee_basis_points: 1000, // Define how much % you want from secondary market sales 1000 = 10%
   external_url: "https://linktr.ee/datboi1337",
   creators: [
@@ -41,52 +31,76 @@ const solanaMetadata = {
       share: 100,
     },
   ],
+  collection: {
+    name: "Your Collection",
+    family: "Your Collection Family",
+  }
 };
 
-// If you have selected Solana then the collection starts from 0 automatically
+// It's suggested to keep shuffle enabled to avoid the same traits generating for spans of images
+const shuffleLayerConfigurations = true;
+
 const layerConfigurations = [
   {
-    growEditionSizeTo: 5,
+    // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
+    growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
+    namePrefix: collectionName,
+    description: description,
     layersOrder: [
-      // { name: "SkeletalBody" },
-      { name: "Head", options: {layerVariations: 'Color', displayName: 'test',} },
-      { name: "Back" },
-      { name: "Legs" },
-      { name: "Arms", options: {layerVariations: 'Color'} },
-      { name: "Mouth" },
-      { name: "Eyes" },
-    ],
-  },
-  {
-    growEditionSizeTo: 15,
-    layersOrder: [
-      { name: "Body" },
-      { name: "Head"},
-      { name: "Back" },
-      { name: "Legs" },
+      { name: "Variant", options: { displayName: "Color" } },
       { name: "Arms" },
-      { name: "Mouth" },
+      { name: "Back" },
+      { name: "Body" },
       { name: "Eyes" },
+      { name: "Head" },
+      { name: "Legs" },
+      { name: "Mouth" },
     ],
   },
   {
-
-    growEditionSizeTo: 30,
+    growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
+    namePrefix: 'Alternate Name',
+    description: 'Alternate Description for this set of tokens',
     layersOrder: [
+      { name: "Arms" },
+      { name: "Back" },
       { name: "Body" },
       { name: "Head" },
-      { name: "Back" },
-      { name: "Legs" },
-      { name: "Arms" },
       { name: "Mouth" },
-      { name: "Eyes" },
     ],
   },
 ];
 
+const format = {
+  width: 512,
+  height: 512,
+  dpi: 72,
+  smoothing: false,
+};
+
+const extraMetadata = {};
+
+const extraAttributes = [];
+
+const rarityDelimiter = "#";
+
+const uniqueDnaTorrance = 10000;
+
 const enableStats = false;
 const statBlocks = [
-  // These are all examples with different display_types. Please refer to Opensea metadata standards for visual examples 
+  /* 
+  * These are all examples with different display_types. 
+  * Please refer to Opensea metadata standards for visual examples.
+  */
+  {
+    minValue: 1,
+    maxValue: 50,
+    attribute:
+    {
+      trait_type: "Stamina", 
+      value: 0
+    },
+  },
   {
     minValue: 1,
     maxValue: 50,
@@ -128,16 +142,7 @@ const statBlocks = [
   },
 ];
 
-const shuffleLayerConfigurations = false;
-
 const debugLogs = false;
-
-const format = {
-  width: 512,
-  height: 512,
-  dpi: 72,
-  smoothing: false,
-};
 
 const gif = {
   export: false,
@@ -146,8 +151,9 @@ const gif = {
   delay: 500,
 };
 
+// Currently disabled
 const text = {
-  only: false,
+  only: true,
   color: "#ffffff",
   size: 20,
   xGap: 40,
@@ -170,14 +176,6 @@ const background = {
   default: "#000000",
 };
 
-const extraMetadata = {};
-
-const extraAttributes = [];
-
-const rarityDelimiter = "#";
-
-const uniqueDnaTorrance = 10000;
-
 const preview = {
   thumbPerRow: 5,
   thumbWidth: 50,
@@ -195,39 +193,18 @@ const preview_gif = {
 };
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
-* Rarity distribution can be adjusted
-* Keep range [0 - 10,000]
-* Because weight is up to 10,000, percentages can determined up to 
-* two decimal places. ie: 10.15% would be 1015
-* DO NOT change the rarity names unless you know what you're doing in main.js
+* Rarity distribution can be adjusted. The main thing to keep in mind
+* when editing is the rarities relationship to eachother. 
+* Common vs Mythic is 100:1 in the default state, for example.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const rarity_config = {
-  Mythic: { ranks: [0, 100] }, //, fileName: 'Mythic.png' },
-  Legendary: { ranks: [100, 600] }, //, fileName: 'Legendary.png' },
-  Epic: { ranks: [600, 1500] }, //, fileName: 'Epic.png' },
-  Rare: { ranks: [1500, 3100] }, //, fileName: 'Rare.png' },
-  Uncommon: { ranks: [3100, 5600] }, //, fileName: 'Uncommon.png' },
-  Common: { ranks: [5600, 10000] }, //, fileName: 'Common.png' },
+  Mythic: 1,
+  Legendary: 6,
+  Epic: 15,
+  Rare: 31,
+  Uncommon: 56,
+  Common: 100,
 };
-
-const layerVariations = [
-  {
-    variationCount: 1,
-    name: 'Color',
-    variations: [
-      'Blue',
-      'Green',
-      'Purple',
-      'Red',
-    ],
-    Weight: [
-      15,
-      25,
-      25,
-      35,
-    ],
-  }
-];
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 * Do not use this unless 100% necessary and you understand the risk
@@ -259,18 +236,16 @@ module.exports = {
   extraMetadata,
   pixelFormat,
   text,
-  namePrefix,
+  collectionName,
+  symbol,
   network,
   solanaMetadata,
   gif,
   preview_gif,
   resumeNum,
   rarity_config,
-  toCreateNow,
   collectionSize,
-  namedWeight,
   exactWeight,
-  layerVariations,
   importOldDna,
   allowDuplicates,
   enableStats,
