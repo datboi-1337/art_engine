@@ -38,7 +38,7 @@ const solanaMetadata = {
 };
 
 // It's suggested to keep shuffle enabled to avoid the same traits generating for spans of images
-const shuffleLayerConfigurations = true;
+const shuffleLayerConfigurations = false;
 
 const layerConfigurations = [
   {

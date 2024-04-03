@@ -6,12 +6,13 @@ const {
   listCompatibility, 
   nestedStructure, 
   markIncompatible, 
+  markForcedCombination,
   checkCompatibility, 
   countAndSave 
 } = require(`${basePath}/modules/isCompatible.js`);
 const { startCreating, buildSetup, rarityBreakdown, createPNG } = require(`${basePath}/src/main.js`);
 
-const incompatible = `${basePath}/compatibility/compatibility.json`
+const incompatible = `${basePath}/compatibility/incompatibilities.json`
 
 let incompatibilities = Object();
 
@@ -75,16 +76,34 @@ const runScript = async () => {
     if (compatibilityOption === choices[0].name || compatibilityOption === choices[1].name) {
       let children = Object.keys(incompatibilities);
       for (let i = 0; i < children.length; i++) {
-        let incompatibleParents = incompatibilities[children[i]].incompatibleParents;
-        for (let j = 0; j < incompatibleParents.length; j++) {
-          console.log(`Marking incompatibilities...`);
-          await markIncompatible(
-            children[i],
-            incompatibilities[children[i]].incompatibleParents[j],
-            incompatibilities[children[i]].parentIndex,
-            incompatibilities[children[i]].childIndex,
-            incompatibilities[children[i]].layerIndex
-          );
+        // account for additional parent index in path
+        let parentIndexes = Object.keys(incompatibilities[children[i]]);
+        for (let j = 0; j < parentIndexes.length; j++) {
+          let tempIndex = parentIndexes[j];
+
+          let incompatibleParents = incompatibilities[children[i]][tempIndex].incompatibleParents;
+          let forcedCombination = incompatibilities[children[i]][tempIndex].fCombination;
+          for (let k = 0; k < incompatibleParents.length; k++) {
+            if (!forcedCombination) {
+              console.log(`Marking Incompatibilities...`);
+              await markIncompatible(
+                children[i],
+                incompatibilities[children[i]][tempIndex].incompatibleParents[k],
+                incompatibilities[children[i]][tempIndex].parentIndex,
+                incompatibilities[children[i]][tempIndex].childIndex,
+                incompatibilities[children[i]][tempIndex].layerIndex
+              );
+            } else {
+              console.log(`Marking Forced Combinations...`);
+              await markForcedCombination(
+                children[i],
+                incompatibilities[children[i]][tempIndex].incompatibleParents[k],
+                incompatibilities[children[i]][tempIndex].parentIndex,
+                incompatibilities[children[i]][tempIndex].childIndex,
+                incompatibilities[children[i]][tempIndex].layerIndex
+              );
+            }
+          }
         }
       }
     }

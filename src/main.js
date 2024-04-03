@@ -43,7 +43,7 @@ var dnaList = new Set();
 const DNA_DELIMITER = "-";
 const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
-const incompatible = `${basePath}/compatibility/compatibility.json`
+const incompatible = `${basePath}/compatibility/incompatibilities.json`
 const { traitCounts, incompatibleNest, compatibleNest } = require(`${basePath}/modules/isCompatible.js`);
 const cliProgress = require('cli-progress');
 // let compatibility = nest;
@@ -437,20 +437,27 @@ const createDnaExact = (_layers, layerConfigIndex) => {
   if (incompatibleTraits.length > 0) {
     restrictedGeneration = true;
 
-    var compatibleChild, compatibleParents, parentIndex, childIndex, compatibleCount;
+    var compatibleChild, pIndex, parentIndex, compatibleCount;
     incompatibleTraits.forEach((incompatibility) => {
-      if (incompatibilities[incompatibility].layerIndex == layerConfigIndex) {
-        compatibleChild = [];
-        compatibleChild.push(incompatibility);
-        compatibleParents = incompatibilities[incompatibility].parents;
-        parentIndex = incompatibilities[incompatibility].parentIndex;
-        childIndex = incompatibilities[incompatibility].childIndex
-        compatibleCount = incompatibilities[incompatibility].maxCount;
-        
-        if(compatibleCount == 0) {
-          console.log(`All ${compatibleChild} distributed`);
-          delete incompatibilities[incompatibility];
-        }
+      let parentIndexes = Object.keys(incompatibilities[incompatibility]);
+      
+      if (parentIndexes.length > 0) {
+        parentIndexes.forEach((index) => {
+          if (incompatibilities[incompatibility][index].layerIndex == layerConfigIndex) {
+            pIndex = index;
+            compatibleChild = [];
+            compatibleChild.push(incompatibility);
+            parentIndex = incompatibilities[incompatibility][index].parentIndex;
+            compatibleCount = incompatibilities[incompatibility][index].maxCount;
+            
+            if(compatibleCount == 0) {
+              console.log(`All ${compatibleChild} distributed`);
+              delete incompatibilities[incompatibility][index];
+            }
+          }
+        });
+      } else {
+        delete incompatibilities[incompatibility];
       }
     });
   }
@@ -461,7 +468,7 @@ const createDnaExact = (_layers, layerConfigIndex) => {
     if (restrictedGeneration && compatibleCount > 0) {
       nest = incompatibleNest[layerConfigIndex][compatibleChild]
       if (layer.id === parentIndex) {
-        incompatibilities[compatibleChild[0]].maxCount--;
+        incompatibilities[compatibleChild[0]][pIndex].maxCount--;
       }
     } else {
       nest = compatibleNest[layerConfigIndex];
@@ -470,6 +477,8 @@ const createDnaExact = (_layers, layerConfigIndex) => {
     let compatibleTraits = Object.keys(nestLookup.reduce(
       (a, trait) => a[trait], nest
     ));
+
+    // console.log(compatibleTraits);
 
     let elements = []
     for (let i = 0; i < compatibleTraits.length; i++) {
@@ -728,11 +737,25 @@ const traitCount = (_layers) => {
   const countArr = Object.keys(count);
   if (incompatibleTraits.length > 0) {
     incompatibleTraits.forEach((incompatibility) => {
+      let parentIndexes = Object.keys(incompatibilities[incompatibility]);
+      parentIndexes.forEach((index) => {
+        let parentIndex = parseInt(index);
+        let max = count[countArr[incompatibilities[incompatibility][parentIndex].childIndex]][incompatibility];
 
-      let max = count[countArr[incompatibilities[incompatibility].childIndex]][incompatibility];
+        let maxPerIndex = Math.floor(max / parentIndexes.length);
+        let remaining = max % parentIndexes.length;
 
-      incompatibilities[incompatibility].maxCount = max;
-    })
+        for (let i = 0; i < parentIndexes.length; i++) {
+          if (i < remaining) {
+            incompatibilities[incompatibility][parentIndexes[i]].maxCount = maxPerIndex + 1;
+          } else {
+            incompatibilities[incompatibility][parentIndexes[i]].maxCount = maxPerIndex;
+          }
+        }
+
+        // incompatibilities[incompatibility][index].maxCount = max;
+      });
+    });
   }
   return count;
 };
@@ -787,7 +810,7 @@ const startCreating = async () => {
       scaleWeight(layer, layersOrderSize, layerConfigIndex);
     });
     allTraitsCount = traitCount(layers);
-    console.log(allTraitsCount)
+    // console.log(allTraitsCount)
     debugLogs ? console.log(allTraitsCount) : null;
     while (
       // editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo
