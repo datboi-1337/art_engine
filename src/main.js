@@ -685,6 +685,7 @@ const scaleWeight = (layer, layerWeight, layerConfigIndex) => {
         throw new Error(`Weights could not be reconciled at current collection size (${collectionSize})`+
         ` Please review your weights, and adjust.`);
       }
+      //@Ricky, create filtered elements array that excludes forced combination traits
       layer.elements.forEach((element) => {
         if (Math.abs(weightDifference) < 0.0001) {
           isDifference = false;
@@ -752,6 +753,9 @@ const traitCount = (_layers) => {
             incompatibilities[incompatibility][parentIndexes[i]].maxCount = maxPerIndex;
           }
         }
+
+        // @Ricky, forced combinations need their maxcount to match. It needs to be set here, but also need to ensure
+        // that scaleWeight will make forced children/parents to have the same count. 
 
         // incompatibilities[incompatibility][index].maxCount = max;
       });
