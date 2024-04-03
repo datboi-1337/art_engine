@@ -351,7 +351,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     if (_dna.split(DNA_DELIMITER)[index] == undefined) {
       console.log(_dna);
       console.log(allTraitsCount);
-      throw new Error(`This error should not happen anymore. Please send @datboi details`);
+      throw new Error(`Blank DNA. This error should not happen anymore. Please send @datboi details`);
     }
 
     let selectedElement = layer.elements.find(
@@ -366,7 +366,9 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     selectedElement = checkVariant(variant, { ...selectedElement });
 
     if (_dna.search(selectedElement.name) < 0) {
-      throw new Error(`This error should not happen anymore. Please send @datboi details`);
+      console.log(_dna);
+      console.log(selectedElement);
+      throw new Error(`${selectedElement.name} missing from DNA. This error should not happen anymore. Please send @datboi details`);
     }
 
     return {
