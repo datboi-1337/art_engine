@@ -637,8 +637,27 @@ function shuffle(array) {
   return array;
 }
 
-const scaleWeight = (layer, layerWeight, layerConfigIndex) => {
+const scaleWeight = (layer, layerWeight, layerConfigIndex, allLayers) => {
   const totalWeight = layer.elements.reduce((sum, element) => sum + element.weight, 0);
+
+  /*
+  @Ricky, get forcedCombinations sorted here. You need to build an object with a structure like so:
+  configIndex: {
+    layerIndex: {
+      childIndex: {
+        child: countOfParent
+      }
+    }
+  }
+  lookup: forcedCombination[0][0][5][child];
+  idk, I think that'll be the easiest to construct. Then be sure to utilize the weightLocked 
+  */
+ 
+  for (const aLayer in allLayers) {
+
+  }
+
+  console.log(layer);
 
   if (layer.elements.length > layerWeight) {
     throw new Error(
@@ -813,7 +832,7 @@ const startCreating = async () => {
       // let layersOrderSize = layerConfigIndex == 0
       //   ? layerConfigurations[layerConfigIndex].growEditionSizeTo
       //   : layerConfigurations[layerConfigIndex].growEditionSizeTo - layerConfigurations[layerConfigIndex - 1].growEditionSizeTo;
-      scaleWeight(layer, layersOrderSize, layerConfigIndex);
+      scaleWeight(layer, layersOrderSize, layerConfigIndex, layers);
     });
     allTraitsCount = traitCount(layers);
     // console.log(allTraitsCount)
