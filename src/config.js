@@ -50,7 +50,14 @@ const layerConfigurations = [
       { name: "Variant", options: { displayName: "Color" } },
       { name: "Arms" },
       { name: "Back" },
-      { name: "Body" },
+      { name: "Body", 
+        options: {
+          subLayers: {
+            blend: MODE.multiply,
+            opacity: 0.5,
+          }
+        } 
+      },
       { name: "Eyes" },
       { name: "Head" },
       { name: "Legs" },

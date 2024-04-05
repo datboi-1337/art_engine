@@ -170,7 +170,10 @@ const layersSetup = (layersOrder) => {
         ? layerObj.options?.["bypassDNA"]
         : false,
     ogName: layerObj.name,
-    
+    subLayers: 
+      layerObj.options?.["subLayers"] != undefined
+        ? layerObj.options?.["subLayers"]
+        : false,
   }));
   return layers;
 };
@@ -365,6 +368,10 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
 
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
+
+    //@Ricky add sublayer logic here
+
+    // console.log(selectedElement);
 
     if (_dna.search(selectedElement.name) < 0) {
       console.log(_dna);
@@ -661,6 +668,7 @@ const forcedCombinationsSetup = () => {
 let layers = [];
 
 const scaleWeight = (layer, layerWeight, layerConfigIndex, forcedCombinations) => {
+  console.log(layer);
   const totalWeight = layer.elements.reduce((sum, element) => sum + element.weight, 0);
 
   // Grab any forced traits so we can set both weights together
