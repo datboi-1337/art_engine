@@ -182,7 +182,7 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
     childIndex: _childIndex,
     layerIndex: Number(_layerIndex),
     maxCount: 0,
-    fCombination: false
+    forced: false
   }
 
   // Log each incompatibility as it's own object for use in generation later
@@ -202,40 +202,6 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
   console.log(`${_incompatibleParent} marked incompatible with ${_child}`);
 }
 
-/*
-@Ricky, important to fix: It's not necessarily an issue atm, and no one has complained, but:
-If you have multiple parent layers with incompatibilities, the current system is going to generate wonky results. ie:
-If you've got jacket (layer 1) and hat (layer 2) incompatible with a sword (layer 6), it' could generate some jackets
-with incompatible hats, and vice versa. The fix is to adjust the structure of incompatibilities. Instead of: 
-  [layersOrderIndex][incompatible child][incompatibleparents, parents, indexes, etc]
-We need to add the actual layer index. 
-  [layersOrderIndex][incompatible child][layerIndex][incompatibleparents, parents, indexes, etc]
-This way, we can have all the stuff to take into consideration. incompatible parents, for example, would go from 
-  incompatibleParents: [ 'Blue' ],
-to:
-  incompatibleParents: [ [ 'Blue' ], [''], [''], [''], [''], [''], ... ]
-I suppose that means all of them would become arrays. so 
-  parentIndex: 0,
-would have to also go to 
-  parentIndex: [ 0, 0, 0, 0, 0, 0, ... ]
-
-Then every reference would also need to include the index for these arrays. 
-
-This doesn't necessarily need to happen for Elementals, or even forced combinations in general technically. 
-But it DOES need to be fixed. Sooner the better. 
-
-This is mostly implemented now. You need to pull from gizmo computer. 
-
-The way it worked out, it makes the most sense to add forced combinations as incompatibilities. 
-
-For multi-select: You need to use the forcedCombination bool. if incompatibility, use multi select w/ arrays
-if forced combination, use single select w/ single values. May be easier to make these arrays as well and use value[0]
-
-You're making a lot of changes to incompatibleNest. Please be sure to verify structure is valid before pushing to prod
-*/
-
-const forcedCombinations = {};
-
 const markForcedCombination = async (_child, _forcedParent, _parentIndex, _childIndex, _layerIndex) => {
   let incompatibleParents = [];
 
@@ -243,16 +209,7 @@ const markForcedCombination = async (_child, _forcedParent, _parentIndex, _child
     incompatibilities[_child] = {};
   }
 
-  // if (!incompatibilities[_child][_parentIndex]) {
-  //   incompatibleParents = [];
-  // } else {
-  //   incompatibleParents = incompatibilities[_child][_parentIndex].incompatibleParents;
-  // }
-
-  // incompatibleParents.push(_incompatibleParent);
-
   let parents = [_forcedParent];
-
   let allParents = Object.keys(compatibility[layers[_layerIndex][_parentIndex]]);
 
   allParents.forEach((parentTrait) => {
@@ -268,7 +225,7 @@ const markForcedCombination = async (_child, _forcedParent, _parentIndex, _child
     childIndex: _childIndex,
     layerIndex: Number(_layerIndex),
     maxCount: 0,
-    fCombination: true
+    forced: true
   }
 
   // Log each forced combination as incompatibility as it's own object for use in generation later
@@ -289,8 +246,6 @@ const checkCompatibility = async () => {
   })
 
   const forcedCombination = await selectType.run() == 'Forced Combination';
-
-  // console.log(forcedCombination);
 
   const selectLayersOrder = new Select({
     name: 'layersOrder',
@@ -367,16 +322,11 @@ const incompatibleNestedStructure = async () => {
     const restricted = Object.keys(incompatibilities);
     // incompatible paths
     restricted.forEach((restrictedTrait) => {
-      let parentIndexes = Object.keys(incompatibilities[restrictedTrait]);
-      parentIndexes.forEach((pIndex) => {
-
-      });
+      let parentIndexes = Object.keys(incompatibilities[restrictedTrait]).map((x) => Number(x));
 
       let compatibilityFlag = false;
-      // let parents = incompatibilities[restrictedTrait].parents;
       let childIndex = incompatibilities[restrictedTrait][parentIndexes[0]].childIndex; 
-      // let parentIndex = incompatibilities[restrictedTrait].parentIndex;
-      // Add all paths containing incompatibilities
+
       for ( let i = lastLayerIndex; i >= 0; i--) {
         if (i == lastLayerIndex) { // Last layer
           let endOfNest = {};
@@ -390,19 +340,11 @@ const incompatibleNestedStructure = async () => {
           }
           previousLayer = endOfNest;
         } else { // Everything else
-          // console.log('testing');
-          // console.log(i);
-          // console.log(incompatibilities[restrictedTrait]);
-          // console.log('-----------------------------------------');
-          // let forcedCombination = incompatibilities[restrictedTrait][i].forcedCombination;
-          // console.log('-----------------------------------------');
-          // console.log(`forcedCombination ${forcedCombination}`);
           let lStruct = {};
           if (i == childIndex) {
             lStruct[restrictedTrait] = previousLayer;
             compatibilityFlag = true;
           } else if (parentIndexes.includes(i) && compatibilityFlag) { 
-            console.log('is it doing this?')
             let parents = incompatibilities[restrictedTrait][i].parents;
             parents.forEach((trait) => {
               lStruct[trait] = previousLayer;
@@ -452,7 +394,7 @@ const compatibleNestedStructure = async => {
           if (incompatibilities[incompatibility][pIndex].layerIndex == index && incompatibilities[incompatibility][pIndex].childIndex == i) {
             restricted.push(incompatibility);
           }
-          if (incompatibilities[incompatibility][pIndex].fCombination) {
+          if (incompatibilities[incompatibility][pIndex].forced) {
             let restrictedParent = incompatibilities[incompatibility][pIndex].parents[0];
             if (!restricted.includes(restrictedParent)) {
               restricted.push(restrictedParent);
@@ -505,26 +447,26 @@ const compatibleNestedStructure = async => {
 const countAndSave = () => {
   incompatibleNestedStructure();
   compatibleNestedStructure();
-  
+ 
   console.log(`With the defined incompatibilites and available traits, `+
     `a maximum of ${maxCombinations} images can be generated`);
 
-  // Save compatibility objects as JSON
-  const ijsonOutput = JSON.stringify(incompatibleNest, null, 2);
-  const ioutputFile = path.join(basePath, 'compatibility/incompatibleNest.json');
-  fs.writeFileSync(ioutputFile, ijsonOutput);
+  // // Save compatibility objects as JSON
+  // const ijsonOutput = JSON.stringify(incompatibleNest, null, 2);
+  // const ioutputFile = path.join(basePath, 'compatibility/incompatibleNest.json');
+  // fs.writeFileSync(ioutputFile, ijsonOutput);
 
-  // Save compatibility objects as JSON
-  const cjsonOutput = JSON.stringify(compatibleNest, null, 2);
-  const coutputFile = path.join(basePath, 'compatibility/compatibleNest.json');
-  fs.writeFileSync(coutputFile, cjsonOutput);
+  // // Save compatibility objects as JSON
+  // const cjsonOutput = JSON.stringify(compatibleNest, null, 2);
+  // const coutputFile = path.join(basePath, 'compatibility/compatibleNest.json');
+  // fs.writeFileSync(coutputFile, cjsonOutput);
 
   // Save compatibility objects as JSON
   const jsonOutput = JSON.stringify(incompatibilities, null, 2);
   const outputFile = path.join(basePath, 'compatibility/incompatibilities.json');
   fs.writeFileSync(outputFile, jsonOutput);
 
-  console.log(`Compatibility files created in ${basePath}/compatibility/`);
+  console.log(`Compatibility files created in ${outputFile}`);
 }
 
 module.exports = { listCompatibility, nestedStructure, markIncompatible, markForcedCombination, checkCompatibility, countAndSave, traitCounts, incompatibleNest,  compatibleNest};

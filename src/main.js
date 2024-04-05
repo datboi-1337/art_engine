@@ -144,6 +144,7 @@ const getElements = (path) => {
         filename: i,
         path: `${path}${i}`,
         weight: getRarityWeight(i),
+        weightLocked: false,
       };
     });
 };
@@ -427,7 +428,6 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
   return !_DnaList.has(_filteredDNA);
 };
 
-// const createDnaExact = (_layers, _remainingInLayersOrder, _currentEdition, layerConfigIndex) => {
 const createDnaExact = (_layers, layerConfigIndex) => {
   let randNum = [];
   let nestLookup = []
@@ -637,27 +637,34 @@ function shuffle(array) {
   return array;
 }
 
-const scaleWeight = (layer, layerWeight, layerConfigIndex, allLayers) => {
-  const totalWeight = layer.elements.reduce((sum, element) => sum + element.weight, 0);
-
-  /*
-  @Ricky, get forcedCombinations sorted here. You need to build an object with a structure like so:
-  configIndex: {
-    layerIndex: {
-      childIndex: {
-        child: countOfParent
-      }
+const forcedCombinationsSetup = () => {
+  //Slightly reformatting incompatibilities for forced combination
+  let combinations = {}
+  for (const incompatibility in incompatibilities) {
+    for (const pIndex in incompatibilities[incompatibility]) {
+      let current = incompatibilities[incompatibility][pIndex];
+      if (current.forced) {
+        let tempObj = {
+          child: incompatibility,
+          parent: current.parents[0],
+          childIndex: current.childIndex,
+          parentIndex: current.parentIndex,
+          layerIndex: current.layerIndex
+        }
+        combinations[current.parents[0]] = tempObj;
+      } 
     }
   }
-  lookup: forcedCombination[0][0][5][child];
-  idk, I think that'll be the easiest to construct. Then be sure to utilize the weightLocked 
-  */
- 
-  for (const aLayer in allLayers) {
+  return combinations;
+}
 
-  }
+let layers = [];
 
-  console.log(layer);
+const scaleWeight = (layer, layerWeight, layerConfigIndex, forcedCombinations) => {
+  const totalWeight = layer.elements.reduce((sum, element) => sum + element.weight, 0);
+
+  // Grab any forced traits so we can set both weights together
+  let forcedParents = Object.keys(forcedCombinations);
 
   if (layer.elements.length > layerWeight) {
     throw new Error(
@@ -680,13 +687,15 @@ const scaleWeight = (layer, layerWeight, layerConfigIndex, allLayers) => {
 
       allCounts[element.name] = maxCount;
 
-      if (scaledWeight == 0) {
-        element.weight = 1;
-      } else if (scaledWeight > maxCount) {
-        element.weight = maxCount;
-      } else {
-        element.weight = scaledWeight;
-      }      
+      if (!element.weightLocked) {
+        if (scaledWeight == 0) {
+          element.weight = 1;
+        } else if (scaledWeight > maxCount) {
+          element.weight = maxCount;
+        } else {
+          element.weight = scaledWeight;
+        }
+      }
     });
 
     if (debugLogs) {
@@ -706,31 +715,44 @@ const scaleWeight = (layer, layerWeight, layerConfigIndex, allLayers) => {
         throw new Error(`Weights could not be reconciled at current collection size (${collectionSize})`+
         ` Please review your weights, and adjust.`);
       }
-      //@Ricky, create filtered elements array that excludes forced combination traits
       layer.elements.forEach((element) => {
-        if (Math.abs(weightDifference) < 0.0001) {
-          isDifference = false;
-          return;
-        } else if (weightDifference < 0) { 
-          let newWeight = element.weight - 1;
-          // Ensure that if reducing weight, it doesn't go to zero.
-          if (newWeight > 0) {
-            element.weight--;
-            weightDifference++;
+        if (!element.weightLocked) {
+          if (Math.abs(weightDifference) < 0.0001) {
+            isDifference = false;
+            return;
+          } else if (weightDifference < 0) { 
+            let newWeight = element.weight - 1;
+            // Ensure that if reducing weight, it doesn't go to zero.
+            if (newWeight > 0) {
+              element.weight--;
+              weightDifference++;
+            }
+          } else if (weightDifference > 0) {
+            let newWeight = element.weight + 1;
+            // Ensure that if increasing weight, it doesn't go past maxCount
+            if (newWeight <= maxCount) {
+              element.weight++;
+              weightDifference--;
+            }
+          } else {
+            throw new Error(`This error should only show if math has changed`);
           }
-        } else if (weightDifference > 0) {
-          let newWeight = element.weight + 1;
-          // Ensure that if increasing weight, it doesn't go past maxCount
-          if (newWeight <= maxCount) {
-            element.weight++;
-            weightDifference--;
-          }
-        } else {
-          throw new Error(`This error should only show if math has changed`);
-        }
+        } 
       });
       maxTries++;
     }
+    // Keep forced children weight in line with parent's weight
+    layer.elements.forEach((element) => {
+      if (forcedParents.includes(element.name)) {
+        let tempChildren = layers[forcedCombinations[element.name].childIndex].elements
+        tempChildren.forEach((child) => {
+          if (child.name == forcedCombinations[element.name].child) {
+            tempChildren[child.id].weight = element.weight;
+            tempChildren[child.id].weightLocked = true;
+          }
+        });
+      }
+    });
   } else if (exactWeight) {
     layer.elements.forEach((element) =>{
       maxCount = traitCounts[layerConfigIndex][layer.ogName][element.name];
@@ -750,6 +772,7 @@ const traitCount = (_layers) => {
   _layers.forEach((layer) => {
     let tempCount = {};
     layer.elements.forEach((element) => {
+      // console.log(element);
       tempCount[element.name] = element.weight;
     });
     count[layer.name] = tempCount;
@@ -774,11 +797,6 @@ const traitCount = (_layers) => {
             incompatibilities[incompatibility][parentIndexes[i]].maxCount = maxPerIndex;
           }
         }
-
-        // @Ricky, forced combinations need their maxcount to match. It needs to be set here, but also need to ensure
-        // that scaleWeight will make forced children/parents to have the same count. 
-
-        // incompatibilities[incompatibility][index].maxCount = max;
       });
     });
   }
@@ -794,7 +812,6 @@ const startCreating = async () => {
   const startNum = network == NETWORK.sol || network == NETWORK.sei ? 0 : 1;
   for (
     let i = startNum;
-    // i <= layerConfigurations[layerConfigurations.length - 1].growEditionSizeTo;
     i <= collectionSize;
     i++
   ) {
@@ -819,33 +836,24 @@ const startCreating = async () => {
     `add up to ${collectionSize}. `);
   }
 
+  const forcedCombinations = forcedCombinationsSetup();
+
   while (layerConfigIndex < layerConfigurations.length) {
-    const layers = layersSetup(
+    layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder
     );
-    
+
     let layersOrderSize = layerConfigurations[layerConfigIndex].growEditionSizeTo;
-    // console.log(`layersOrderSize: ${layersOrderSize}`);
     cumulativeEditionSize += layersOrderSize;
-    // console.log(`cumulativeEditionSize: ${cumulativeEditionSize}`);
     layers.forEach((layer) => {
-      // let layersOrderSize = layerConfigIndex == 0
-      //   ? layerConfigurations[layerConfigIndex].growEditionSizeTo
-      //   : layerConfigurations[layerConfigIndex].growEditionSizeTo - layerConfigurations[layerConfigIndex - 1].growEditionSizeTo;
-      scaleWeight(layer, layersOrderSize, layerConfigIndex, layers);
+      scaleWeight(layer, layersOrderSize, layerConfigIndex, forcedCombinations);
     });
     allTraitsCount = traitCount(layers);
     // console.log(allTraitsCount)
     debugLogs ? console.log(allTraitsCount) : null;
     while (
-      // editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo
       editionCount <= cumulativeEditionSize
     ) {
-
-      // let currentEdition = editionCount - 1;
-      // let remainingInLayersOrder = layerConfigurations[layerConfigIndex].growEditionSizeTo - currentEdition;
-
-      // let newDna = createDnaExact(layers, remainingInLayersOrder, currentEdition, layerConfigIndex);
       let newDna = createDnaExact(layers, layerConfigIndex);
 
       let duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
@@ -878,7 +886,6 @@ const startCreating = async () => {
         let desc = layerConfigurations[layerConfigIndex].description;
 
         addMetadata(newDna, name, desc, abstractedIndexes[0]+resumeNum);
-        // addMetadata(newDna, abstractedIndexes[0]+resumeNum);
         saveMetaDataSingleFile(abstractedIndexes[0]+resumeNum);
 
         console.log(
@@ -919,7 +926,7 @@ const rarityBreakdown = () => {
   let data = JSON.parse(rawdata);
   let editionSize = data.length;
 
-  let layers = [];
+  let allLayers = [];
   let layerNames = [];
 
   // Get layers
@@ -928,13 +935,13 @@ const rarityBreakdown = () => {
     if (attributes) {
       attributes.forEach((attribute) => {
         let traitType = attribute.trait_type;
-        if(!layers.includes(traitType)) {
+        if(!allLayers.includes(traitType)) {
           let newLayer = [{
             trait: traitType,
             count: 0,
             occurrence: `%`,
           }]
-          layers[traitType] = newLayer;
+          allLayers[traitType] = newLayer;
           if(!layerNames.includes(traitType)) {
             layerNames.push(traitType);
           }
@@ -950,16 +957,16 @@ const rarityBreakdown = () => {
       attributes.forEach((attribute) => {
         let traitType = attribute.trait_type;
         let value = attribute.value;
-        if(layers[traitType][0].trait == traitType) {
-          layers[traitType][0].trait = value;
-          layers[traitType][0].count = 1;
-          layers[traitType][0].occurrence = `${((1/editionSize) * 100).toFixed(2)}%`;
+        if(allLayers[traitType][0].trait == traitType) {
+          allLayers[traitType][0].trait = value;
+          allLayers[traitType][0].count = 1;
+          allLayers[traitType][0].occurrence = `${((1/editionSize) * 100).toFixed(2)}%`;
         } else {
           let layerExists = false;
-          for (let i = 0; i < layers[traitType].length; i++) {
-            if(layers[traitType][i].trait == value) {
-              layers[traitType][i].count++;
-              layers[traitType][i].occurrence = `${((layers[traitType][i].count/editionSize) * 100).toFixed(2)}%`;
+          for (let i = 0; i < allLayers[traitType].length; i++) {
+            if(allLayers[traitType][i].trait == value) {
+              allLayers[traitType][i].count++;
+              allLayers[traitType][i].occurrence = `${((allLayers[traitType][i].count/editionSize) * 100).toFixed(2)}%`;
               layerExists = true;
               break;
             }
@@ -970,7 +977,7 @@ const rarityBreakdown = () => {
               count: 1,
               occurrence: `${((1/editionSize) * 100).toFixed(2)}%`,
             }
-            layers[traitType].push(newTrait);
+            allLayers[traitType].push(newTrait);
           }
         }
       }); 
@@ -983,7 +990,7 @@ const rarityBreakdown = () => {
   for (let i = 0; i < layerNames.length; i++) {
     let layer = layerNames[i];
     layerExport.push(layer);
-    layerExport.push(layers[layer]);
+    layerExport.push(allLayers[layer]);
   }
 
   console.log(layerExport);

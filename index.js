@@ -82,7 +82,7 @@ const runScript = async () => {
           let tempIndex = parentIndexes[j];
 
           let incompatibleParents = incompatibilities[children[i]][tempIndex].incompatibleParents;
-          let forcedCombination = incompatibilities[children[i]][tempIndex].fCombination;
+          let forcedCombination = incompatibilities[children[i]][tempIndex].forced;
           for (let k = 0; k < incompatibleParents.length; k++) {
             if (!forcedCombination) {
               console.log(`Marking Incompatibilities...`);
@@ -97,7 +97,7 @@ const runScript = async () => {
               console.log(`Marking Forced Combinations...`);
               await markForcedCombination(
                 children[i],
-                incompatibilities[children[i]][tempIndex].incompatibleParents[k],
+                incompatibilities[children[i]][tempIndex].parents[0],
                 incompatibilities[children[i]][tempIndex].parentIndex,
                 incompatibilities[children[i]][tempIndex].childIndex,
                 incompatibilities[children[i]][tempIndex].layerIndex

@@ -62,11 +62,10 @@ const layerConfigurations = [
     namePrefix: 'Alternate Name',
     description: 'Alternate Description for this set of tokens',
     layersOrder: [
-      { name: "Arms" },
-      { name: "Back" },
-      { name: "Body" },
-      { name: "Head" },
-      { name: "Mouth" },
+      { name: "SkeletalArms" },
+      { name: "SkeletalBack" },
+      { name: "SkeletalBody" },
+      { name: "SkeletalLegs" },
     ],
   },
 ];
