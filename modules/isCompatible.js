@@ -2,7 +2,7 @@ const readline = require('readline');
 const fs = require("fs");
 const path = require("path");
 const basePath = process.cwd();
-const { format, layerConfigurations, rarityDelimiter } = require(`${basePath}/src/config.js`);
+const { format, layerConfigurations, rarityDelimiter, zindexDelimiter } = require(`${basePath}/src/config.js`);
 const { Select } = require('enquirer');
 const cliProgress = require('cli-progress');
 // const { createCanvas, loadImage } = require("canvas");
@@ -20,8 +20,9 @@ if (!fs.existsSync(dir)) {
 
 const cleanName = (_str) => {
   let nameWithoutExtension = _str.slice(0, -4);
-  var nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
-  return nameWithoutWeight;
+  let nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
+  let nameWithoutZindex = nameWithoutWeight.split(zindexDelimiter).pop();
+  return nameWithoutZindex;
 };
 
 const askUserConfirmation = (question) => {

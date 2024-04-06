@@ -43,7 +43,7 @@ const shuffleLayerConfigurations = false;
 const layerConfigurations = [
   {
     // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
-    growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
+    growEditionSizeTo: 65, // << This will generate 50 images with this layersOrder
     namePrefix: collectionName,
     description: description,
     layersOrder: [
@@ -52,9 +52,10 @@ const layerConfigurations = [
       { name: "Back" },
       { name: "Body", 
         options: {
-          subLayers: {
+          subTraits: {
             blend: MODE.multiply,
             opacity: 0.5,
+            zindex: 25,
           }
         } 
       },
@@ -64,17 +65,17 @@ const layerConfigurations = [
       { name: "Mouth" },
     ],
   },
-  {
-    growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
-    namePrefix: 'Alternate Name',
-    description: 'Alternate Description for this set of tokens',
-    layersOrder: [
-      { name: "SkeletalArms" },
-      { name: "SkeletalBack" },
-      { name: "SkeletalBody" },
-      { name: "SkeletalLegs" },
-    ],
-  },
+  // {
+  //   growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
+  //   namePrefix: 'Alternate Name',
+  //   description: 'Alternate Description for this set of tokens',
+  //   layersOrder: [
+  //     { name: "SkeletalArms" },
+  //     { name: "SkeletalBack" },
+  //     { name: "SkeletalBody" },
+  //     { name: "SkeletalLegs" },
+  //   ],
+  // },
 ];
 
 const format = {
@@ -89,6 +90,8 @@ const extraMetadata = {};
 const extraAttributes = [];
 
 const rarityDelimiter = "#";
+
+const zindexDelimiter = "$";
 
 const uniqueDnaTorrance = 10000;
 
@@ -228,6 +231,8 @@ const importOldDna = false;
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const allowDuplicates = false;
 
+const bypassZeroProtection = false;
+
 module.exports = {
   format,
   baseUri,
@@ -236,6 +241,7 @@ module.exports = {
   uniqueDnaTorrance,
   layerConfigurations,
   rarityDelimiter,
+  zindexDelimiter,
   preview,
   shuffleLayerConfigurations,
   debugLogs,
@@ -257,4 +263,5 @@ module.exports = {
   enableStats,
   statBlocks,
   extraAttributes,
+  bypassZeroProtection,
 };

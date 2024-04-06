@@ -13,6 +13,7 @@ const {
   uniqueDnaTorrance,
   layerConfigurations,
   rarityDelimiter,
+  zindexDelimiter,
   shuffleLayerConfigurations,
   debugLogs,
   extraMetadata,
@@ -32,6 +33,7 @@ const {
   enableStats,
   statBlocks,
   extraAttributes,
+  bypassZeroProtection,
 } = require(`${basePath}/src/config.js`);
 const canvas = createCanvas(format.width, format.height);
 const ctx = canvas.getContext("2d");
@@ -96,8 +98,14 @@ function cleanDna(_str) {
 
 const cleanName = (_str) => {
   let nameWithoutExtension = _str.slice(0, -4);
-  var nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
-  return nameWithoutWeight;
+  let nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
+  let nameWithoutZindex = nameWithoutWeight.split(zindexDelimiter).pop();
+  return nameWithoutZindex;
+};
+
+const getZIndex = (_str) => {
+  let zindex = Number(_str.split(zindexDelimiter).shift().slice(1));
+  return zindex;
 };
 
 const getRarityWeight = (_str) => {
@@ -127,7 +135,7 @@ const getRarityWeight = (_str) => {
   return Number(finalWeight);
 };
 
-const getElements = (path) => {
+const getElements = (path, _zindex) => {
   return fs
     .readdirSync(path)
     .filter((item) => {
@@ -138,6 +146,8 @@ const getElements = (path) => {
       if (i.includes("-")) {
         throw new Error(`layer name can not contain dashes, please fix: ${i}`);
       }
+      let zindex = getZIndex(i);
+      // console.log(i);
       return {
         id: index,
         name: cleanName(i),
@@ -145,6 +155,7 @@ const getElements = (path) => {
         path: `${path}${i}`,
         weight: getRarityWeight(i),
         weightLocked: false,
+        zindex: !isNaN(zindex) ? zindex : _zindex * 10,
       };
     });
 };
@@ -152,7 +163,7 @@ const getElements = (path) => {
 const layersSetup = (layersOrder) => {
   const layers = layersOrder.map((layerObj, index) => ({
     id: index,
-    elements: getElements(`${layersDir}/${layerObj.name}/`),
+    elements: getElements(`${layersDir}/${layerObj.name}/`, index),
     name:
       layerObj.options?.["displayName"] != undefined
         ? layerObj.options?.["displayName"]
@@ -170,9 +181,9 @@ const layersSetup = (layersOrder) => {
         ? layerObj.options?.["bypassDNA"]
         : false,
     ogName: layerObj.name,
-    subLayers: 
-      layerObj.options?.["subLayers"] != undefined
-        ? layerObj.options?.["subLayers"]
+    subTraits: 
+      layerObj.options?.["subTraits"] != undefined
+        ? layerObj.options?.["subTraits"]
         : false,
   }));
   return layers;
@@ -263,8 +274,22 @@ const addAttributes = (_element) => {
       path: selectedElement.path,
       blend: _element.blend,
       opacity: _element.opacity,
+      zindex: _element.zindex,
     }
   });
+  // Add additional imgData for subTraits
+  if (_element.subTraits.length > 0) {
+    _element.subTraits.forEach((subTrait) => {
+      attributesList.push({
+        imgData: {
+          path: subTrait.path,
+          blend: subTrait.blend,
+          opacity: subTrait.opacity,
+          zindex: subTrait.zindex,
+        }
+      })
+    })
+  }
 };
 
 const addStats = () => {
@@ -336,6 +361,7 @@ const checkVariant = (_variant, _traitObj) => {
             let variantExists = fs.existsSync(variantPath);
             if (variantExists) {
               tempObj.path = variantPath;
+              tempObj.filename = variantTraits[index];
             } else {
               return;
             }
@@ -346,6 +372,62 @@ const checkVariant = (_variant, _traitObj) => {
   }
 
   return tempObj;
+}
+
+const checkSubTraits = (_subTraits, _traitObj) => {
+  // need to return elements array with subtraits appended?
+  let tempArr = [];
+  let tempObj = {..._traitObj};
+
+  // console.log(tempObj);
+
+  // Clean layer path
+  let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
+
+  // console.log('path');
+  // console.log(layerPath);
+
+  // Filter for subTrait folders
+  let subTraitFolders = fs
+    .readdirSync(`${layerPath}`)
+    .filter((item) => {
+      // console.log('item');
+      // console.log(item);
+      const fullPath = layerPath + item;
+      return fs.statSync(fullPath).isDirectory() && !/(^|\/)\.[^\/\.]/g.test(item);
+    });
+
+    // console.log(subTraitFolders);
+  
+  // Pull variant trait if it exists, do nothing if it doesn't
+  if (subTraitFolders.length > 0) {
+    subTraitFolders.forEach((folder) => {
+      if (folder == tempObj.name) {
+        let subTraits = fs.readdirSync(`${layerPath}${tempObj.name}`);
+        let cleanTraits = subTraits.map((file) => cleanName(file));
+        cleanTraits.forEach((subTrait, index) => {
+          let subObj = {};
+          let subTraitfilename = subTraits[index];
+          let subTraitPath = `${layerPath}${tempObj.name}/${subTraitfilename}`;
+          let subTraitExists = fs.existsSync(subTraitPath);
+          let subTraitZindex = getZIndex(subTraitfilename);
+          if (subTraitExists) {
+            subObj.name = subTrait;
+            subObj.filename = subTraitfilename;
+            subObj.path = subTraitPath;
+            subObj.blend = _subTraits.blend;
+            subObj.opacity = _subTraits.opacity;
+            subObj.zindex = !isNaN(subTraitZindex) ? subTraitZindex : _subTraits.zindex;
+          } else {
+            return;
+          }
+          tempArr.push(subObj);
+        });
+      }
+    });
+  }
+
+  return tempArr;
 }
 
 const constructLayerToDna = (_dna = "", _layers = []) => {
@@ -369,9 +451,10 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
 
-    //@Ricky add sublayer logic here
+    let selectedSubTraits = checkSubTraits(layer.subTraits, selectedElement);
 
     // console.log(selectedElement);
+    // console.log(selectedSubTraits);
 
     if (_dna.search(selectedElement.name) < 0) {
       console.log(_dna);
@@ -385,6 +468,8 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       opacity: layer.opacity,
       selectedElement: selectedElement,
       ogName: layer.ogName,
+      zindex: selectedElement.zindex,
+      subTraits: selectedSubTraits,
     };
   });
   return mappedDnaToLayers;
@@ -668,13 +753,13 @@ const forcedCombinationsSetup = () => {
 let layers = [];
 
 const scaleWeight = (layer, layerWeight, layerConfigIndex, forcedCombinations) => {
-  console.log(layer);
+  // console.log(layer);
   const totalWeight = layer.elements.reduce((sum, element) => sum + element.weight, 0);
 
   // Grab any forced traits so we can set both weights together
   let forcedParents = Object.keys(forcedCombinations);
 
-  if (layer.elements.length > layerWeight) {
+  if (layer.elements.length > layerWeight && !bypassZeroProtection) {
     throw new Error(
       `Your ${layer.name} layer contains more traits than your current growEditionSizeTo (${layerWeight})!`+
       ` To avoid 0 count traits, you must set growEditionSizeTo to a minimum of ${layer.elements.length}.`);
@@ -873,7 +958,8 @@ const startCreating = async () => {
         results.forEach((layer) => {
           // Deduct selected layers from allTraitscount
           allTraitsCount[layer.name][layer.selectedElement.name]--;
-
+          // console.log('--------------------');
+          // console.log(layer);
 
           addAttributes(layer);
         })
@@ -1041,7 +1127,9 @@ const createPNG = async () => {
       drawBackground();
     }
 
-    for (const attr of item.attributes) {
+    const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex); 
+
+    for (const attr of sortedAttributes) {
       if (attr.imgData) {
         ctx.globalAlpha = attr.imgData.opacity;
         ctx.globalCompositeOperation = attr.imgData.blend;
