@@ -270,15 +270,15 @@ To start, subTraits are created by creating a folder in the layer folder with th
 The subTraits system will recognize these folders, and include any images within whenever the primary trait is chosen, adhering to any custom options set in config.js. 
 ### Multiple Z-Indexes 
 Consider the skeletal layers in this repo. The Seaweed accessory is meant to show both in front of and behind the fish. 
-![subTraitsExamples](media/subtraits_seaweed1.png)
+![subTraitsExamples](media/subTraits_seaweed1.png)
 To achieve this from an art direction point of view, you could edit the seawead trait to be empty in the area where the skeleton is supposed to be:
-![subTraitsExamples](media/subtraits_seaweed2.png)
+![subTraitsExamples](media/subTraits_seaweed2.png)
 This works, but can be a little tedious for artists. Instead, we can use the subTraits system and organize the traits like we do in photoshop. Splitting the Seaweed trait into to separate layers:
-![subTraitsExamples](media/subtraits_seaweed3.png)
-![subTraitsExamples](media/subtraits_seaweed4.png)
+![subTraitsExamples](media/subTraits_seaweed3.png)
+![subTraitsExamples](media/subTraits_seaweed4.png)
 This way, we can put the part of the Seaweed intended to go behind the fish in the 'Seaweed' folder, and save the primary Seaweed trait in the SkeletalAccessories folder:
 **NOTE**: subTrait folder MUST match the name of the primary trait (excluding weight/Z-Index) or else it will not be rendered in the final image. 
-![subTraitsExamples](media/subtraits_example2.png)
+![subTraitsExamples](media/subTraits_example2.png)
 
 Then, we can set config.js like so, being sure to make the zindex lower than the SkeletalAccessories default Z-Index (40 in this case). 
 ```js
