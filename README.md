@@ -270,7 +270,7 @@ To start, subTraits are created by creating a folder in the layer folder with th
 The subTraits system will recognize these folders, and include any images within whenever the primary trait is chosen, adhering to any custom options set in config.js. 
 ### Multiple Z-Indexes 
 Consider the skeletal layers in this repo. The Seaweed accessory is meant to show both in front of and behind the fish. 
-![subTraitsExamples](media/subtraits_seaweed1.png)
+![subTraitsExamples](media/subTraits_seaweed1.png)
 To achieve this from an art direction point of view, you could edit the seawead trait to be empty in the area where the skeleton is supposed to be:
 ![subTraitsExamples](media/subTraits_seaweed2.png)
 This works, but can be a little tedious for artists. Instead, we can use the subTraits system and organize the traits like we do in photoshop. Splitting the Seaweed trait into to separate layers:
@@ -292,12 +292,12 @@ Then, we can set config.js like so, being sure to make the zindex lower than the
 ```
 ## Different rendering options
 Consider the AnglerEyes trait in this repo. It's intended to have a light element, but was originally designed for the light to be a multiply layer:
-![subTraitsExamples](media/subtraits_light1.png)
-![subTraitsExamples](media/subtraits_light2.png)
+![subTraitsExamples](media/subTraits_light1.png)
+![subTraitsExamples](media/subTraits_light2.png)
 When exported as a layer, the light element simply looks like this:
-![subTraitsExamples](media/subtraits_light3.png)
+![subTraitsExamples](media/subTraits_light3.png)
 To address this, we can use the subTraits system. We add a folder called 'AnglerEyes' to match the primary trait, and add the light element inside it:
-![subTraitsExamples](media/subtraits_example3.png)
+![subTraitsExamples](media/subTraits_example3.png)
 The setup our subTraits in config.js like so (I've also added opacity here for demonstration):
 ```js
 { name: "Eyes",
