@@ -292,8 +292,11 @@ Then, we can set config.js like so, being sure to make the zindex lower than the
 ```
 ## Different rendering options
 Consider the AnglerEyes trait in this repo. It's intended to have a light element, but was originally designed for the light to be a multiply layer:
+<br/>
 ![subTraitsExamples](media/subTraits_light1.png)
+<br/>
 ![subTraitsExamples](media/subTraits_light2.png)
+<br/>
 When exported as a layer, the light element simply looks like this:
 ![subTraitsExamples](media/subTraits_light3.png)
 To address this, we can use the subTraits system. We add a folder called 'AnglerEyes' to match the primary trait, and add the light element inside it:
