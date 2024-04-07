@@ -35,18 +35,21 @@ const askUserConfirmation = (question) => {
 };
 
 const addIncompatibility = async () => {
-  let answer = 'Y'
+  const selectAddIncompatibility = new Select({
+    name: 'addIncompatibility',
+    message: 'Do you want to define a new incompatibility or forced combination?',
+    choices: ['No', 'Yes']
+  });
 
-  while (answer == 'Y') {
-    answer = await askUserConfirmation("Do you want to define a new incompatibility?");
+  const answer = await selectAddIncompatibility.run();
 
-    if (answer === 'Y') {
-      await checkCompatibility()
-    } else if (answer !== 'N') {
-      console.log("Please enter 'Y' or 'N'.");
-    }
+  if (answer === 'Yes') {
+    await checkCompatibility();
+    await addIncompatibility();
+  } else if (answer === 'No') {
+    return;
   }
-}
+};
 
 const runScript = async () => {
 
@@ -124,11 +127,15 @@ const runScript = async () => {
   await startCreating();
   await rarityBreakdown();
 
-  answer = await askUserConfirmation(
-    'Please review rarity breakdown above and metadata in build folder. Proceed with image generation?'
-  );
+  const selectProceed = new Select({
+    name: 'proceed',
+    message: 'Please review rarity breakdown above and metadata in build folder.',
+    choices: ['Proceed with image generation', 'Abort']
+  });
 
-  if (answer === 'Y') {
+  const answer = await selectProceed.run();
+
+  if (answer === 'Proceed with image generation') {
     await createPNG();
   } else {
     console.log('Process aborted.');

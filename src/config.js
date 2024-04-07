@@ -43,11 +43,11 @@ const shuffleLayerConfigurations = false;
 const layerConfigurations = [
   {
     // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
-    growEditionSizeTo: 65, // << This will generate 50 images with this layersOrder
+    growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
     namePrefix: collectionName,
     description: description,
     layersOrder: [
-      { name: "Variant", options: { displayName: "Color" } },
+      { name: "Variant", options: { displayName: "Color" } }, 
       { name: "Arms" },
       { name: "Back" },
       { name: "Body", 
@@ -59,23 +59,38 @@ const layerConfigurations = [
           }
         } 
       },
-      { name: "Eyes" },
+      { name: "Eyes",
+        options: {
+          subTraits: {
+            blend: MODE.multiply,
+            opacity: 0.5,
+            zindex: 35,
+          }
+        } 
+      },
       { name: "Head" },
       { name: "Legs" },
       { name: "Mouth" },
     ],
   },
-  // {
-  //   growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
-  //   namePrefix: 'Alternate Name',
-  //   description: 'Alternate Description for this set of tokens',
-  //   layersOrder: [
-  //     { name: "SkeletalArms" },
-  //     { name: "SkeletalBack" },
-  //     { name: "SkeletalBody" },
-  //     { name: "SkeletalLegs" },
-  //   ],
-  // },
+  {
+    growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
+    namePrefix: `Skeletal ${collectionName}`,
+    description: 'Alternate Description for this set of tokens',
+    layersOrder: [
+      { name: "SkeletalArms" },
+      { name: "SkeletalBack" }, 
+      { name: "SkeletalBody" }, 
+      { name: "SkeletalLegs" }, 
+      { name: "SkeletalAccessories", 
+        options: {
+          subTraits: {
+            zindex: 35,
+          }
+        } 
+      }
+    ],
+  },
 ];
 
 const format = {

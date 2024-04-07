@@ -19,14 +19,16 @@ If you have any questions, please feel free to ask me in the various channels I 
 Use Node 18-20
 
 # Enhanced Features in this fork
+---
 
 ## More efficient generation
 - [Split metadata and image generation](#split-metadata-and-image-generation)
 
-## Set incompatible layers
-- [Guided wizard for setting incompatible traits](#incompatibility-wizard)
-  - [Incompatibility wizard example](#incompatibility-wizard-example)
-  - [Bulk incompatibility entry (bulk)](#advanced-incompatibility)
+## Conditional generation
+- [Guided wizard for setting incompatible traits and forced combinations](#compatibility-wizard)
+  - [Incompatibility example](#incompatibility-example)
+  - [Forced combinations example](#forced-combination-example)
+  - [Bulk incompatibility entry (bulk)](#advanced-compatibility)
 
 ## Additional network selections
 - [Metadata standard output for Ethereum, Solana, and SEI](#network-selection)
@@ -43,6 +45,14 @@ Use Node 18-20
 ## Layer Variation
 - [Assign layer variations to ensure layers with that variation match eachother](#layer-variation-system)
   - [layer variation example](#layer-variation-example)
+
+## SubTrait options for granular control
+- [Assign advanced subTraits with independant image control options like blend, opacity, and Z-Index](#subtrait-options)
+  - [subTrait examples](#subtrait-examples)
+
+## Z-Index system
+- [Override layerOrder with Z-Index](#z-index)
+  - [Z-Index examples](#z-index-examples)
 
 ## Add stat blocks
 - [Assign randomized stats within defined range to each NFT!](#stat-blocks)
@@ -93,61 +103,87 @@ Use Node 18-20
 4) Define general metadata (and solanaMetadata of generating for Solana)
 5) Update layerConfigurations in config.js. Be sure to define them in the order they are to be selected. First definition is the 'bottom' or 'back' of the image. 
 6) Run generation with `npm run generate`
-7) Follow prompts to define any incompatibilities
+7) Follow prompts to define any incompatibilities or forced combinations
 8) Review metadata once it's been generated, and follow the prompts to generate images if metadata is generated to your specification. 
 
 # Split metadata and image generation
 All metadata will be generated immediately upon running `npm run generate`. This allows generation to happen much faster, and provides a trait breakdown in the terminal upon completion, with a prompt to continue to photo generation. Any issues with metadata/compatibility can be seen and rectified much faster, then when all is well, image generation can take place. 
 ![photoGeneration](media/proceed_to_photo_generation.png)
 
-# Incompatibility Wizard
+# Compatibility Wizard
 You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
 
-# Incompatibility wizard example
+# Incompatibility example
 With the default layers in this fork, we can define the following incompatibility (arbitraily chosen for demonstration): Eyes/EyeScar is not compatible with Back/StrapOnShark. We can tell the engine not to generate those items together like so:
 <br/>
 
 1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
 ![incompatibility1](media/incompatibility_prompt_1.png)
-2) Select layer configuration index (if applicable)
+2) Select Incompatibility
 ![incompatibility2](media/incompatibility_prompt_2.png)
-3) Select the layer your *first* trait is located in
+3) Select layer configuration index (if applicable)
 ![incompatibility3](media/incompatibility_prompt_3.png)
-4) Select the first trait
+4) Select the layer your *first* trait is located in 
 ![incompatibility4](media/incompatibility_prompt_4.png)
-5) Select the layer your *second* trait is located in
+5) Select the first trait
 ![incompatibility5](media/incompatibility_prompt_5.png)
-6) Select the second trait
+6) Select the layer your *second* trait is located in
 ![incompatibility6](media/incompatibility_prompt_6.png)
-7) Allow engine to calculate new compatibile paths. **NOTE** Depending on your trait count, this may take some time. 
-![incompatibility7](media/incompatibility_prompt_7_loading.png)
-8) You will be prompted again to enter any more incompatibilities you may have
+7) Select the second trait
+![incompatibility7](media/incompatibility_prompt_7.png)
+8) Engine will mark incompatitbility and prompt you to enter any other incompatibilities or forced combinations.
 ![incompatibility8](media/incompatibility_prompt_8.png)
 
+# Forced combination example
+We can define the following forced combination (again, arbitraily chosen for demonstration): Arms/FinArms must only ever generate with Legs/FinLegs. We can tell the engine to always generate those items together like so:
 <br/>
-In cases where generation needs to be run again, or incompatibilities have been defined manually (see Advanced incompatibility below), you will be prompted to review existing incompatibilities and asked to either proceed with generation, add more incompatibilities, or remove all incompatibilities to start fresh (you will be prompted to add incompatibilities again, if needed).
+
+1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
+![incompatibility1](media/incompatibility_prompt_1.png)
+2) Select Forced Combination
+![incompatibility2](media/incompatibility_prompt_2fc.png)
+3) Select layer configuration index (if applicable)
+![incompatibility3](media/incompatibility_prompt_3fc.png)
+4) Select the layer your *first* trait is located in 
+![incompatibility4](media/incompatibility_prompt_4fc.png)
+5) Select the first trait
+![incompatibility5](media/incompatibility_prompt_5fc.png)
+6) Select the layer your *second* trait is located in
+![incompatibility6](media/incompatibility_prompt_6fc.png)
+7) Select the second trait
+![incompatibility7](media/incompatibility_prompt_7fc.png)
+8) Engine will mark forced and prompt you to enter any other incompatibilities or forced combinations.
+![incompatibility8](media/incompatibility_prompt_8fc.png)
+
+**NOTE**: Incompatibilities and forced combinations are not lost in cases where generation needs to be run again. If you've previously run the compatibility wizard or incompatibilities have been defined manually (see Advanced incompatibility below), you will be prompted to review existing incompatibilities, then asked to either proceed with generation, add more incompatibilities, or remove all incompatibilities to start fresh (you will be prompted to add incompatibilities again, if needed).
 
 ![incompatibility9](media/incompatibility_prompt_9_existing.png)
 
-# Advanced incompatibility
-If you need to define multiple incompatibilities, and you don't want to use the wizard, you *can* define them manually by editing compatibility/compatibility.json, adding an object like the example below. 
-**NOTE** This should really only be used by advanced users. If this is defined incorrectly, it's possible for some of your incompatibilities to not work properly!
+# Advanced compatibility
+If you need to define multiple incompatibilities/forced combinations, and you don't want to use the wizard, you *can* define them manually by editing compatibility/compatibility.json, adding an object like the example below. 
+**NOTE** This should really only be used by advanced users. If this is defined incorrectly, it's possible to experience generation issues.
 ```js
 {
-  "EyeScar": {
-    "incompatibleParent": "StrapOnShark",
-    "parents": [
-      "BetaFins",
-      "Blowhole",
-      "DolphinFin",
-      "DorsalFins",
-      "SharkFin",
-      "TurtleShell"
-    ],
-    "parentIndex": 2,
-    "childIndex": 4,
-    "layerIndex": 0,
-    "maxCount": 0
+  "FinLegs": {  // child trait. second selected incompatible / forced trait
+    "1": { // parent index. There can be multiple, so it's defined as a key
+      "incompatibleParents": [ // incompatible parents. in this scenario,
+        "BetaArms",            // all but one are marked incompatible because 
+        "FidlerClaws",         // this is a forced combination
+        "LobsterClaws",
+        "LureArms",
+        "NemoFins",
+        "TentacleArms",
+        "TurtleArms"
+      ],
+      "parents": [ // compatible parents
+        "FinArms"
+      ],
+      "parentIndex": 1, // layersOrder index of parent layer
+      "childIndex": 6, // layersOrder index of child layer
+      "layerIndex": 0, // layerConfiguration index
+      "maxCount": 0, // This will be calculated later, should always be 0 by default
+      "forced": true // true for forced combinations, false for incompatibility
+    }
   }
 }
 ```
@@ -221,6 +257,79 @@ For this setup, the layer configuration should look like this. **Please note** t
       { name: "Mouth" },
     ],
   },
+```
+# Subtrait options
+Subtraits are intended to be utilised when you have parts of a trait that need different options (blend mode, opacity, Z-Index) than it's parent. 
+
+**NOTE**: These traits are not included in the final metadata. 
+# Subtrait examples
+Good examples of what subtraits are useful for are things like Hat or Hair traits that need to be in front of some elements but behind others, or shadows that need to apply a 50% opacity while the parent trait needs to be full opacity. 
+
+To start, subTraits are created by creating a folder in the layer folder with the same name (**READ**: clean name, without Z-index or weight) as the parent/primary trait directly in the layer folder. Here, you can see multiple folders that have the same clean name as some of the traits. Those four traits all contain subTraits:
+![subTraitsFolders](media/subTraits_example1.png)
+The subTraits system will recognize these folders, and include any images within whenever the primary trait is chosen, adhering to any custom options set in config.js. 
+### Multiple Z-Indexes 
+Consider the skeletal layers in this repo. The Seaweed accessory is meant to show both in front of and behind the fish. 
+![subTraitsExamples](media/subtraits_seaweed1.png)
+To achieve this from an art direction point of view, you could edit the seawead trait to be empty in the area where the skeleton is supposed to be:
+![subTraitsExamples](media/subtraits_seaweed2.png)
+This works, but can be a little tedious for artists. Instead, we can use the subTraits system and organize the traits like we do in photoshop. Splitting the Seaweed trait into to separate layers:
+![subTraitsExamples](media/subtraits_seaweed3.png)
+![subTraitsExamples](media/subtraits_seaweed4.png)
+This way, we can put the part of the Seaweed intended to go behind the fish in the 'Seaweed' folder, and save the primary Seaweed trait in the SkeletalAccessories folder:
+**NOTE**: subTrait folder MUST match the name of the primary trait (excluding weight/Z-Index) or else it will not be rendered in the final image. 
+![subTraitsExamples](media/subtraits_example2.png)
+
+Then, we can set config.js like so, being sure to make the zindex lower than the SkeletalAccessories default Z-Index (40 in this case). 
+```js
+{ name: "SkeletalAccessories", 
+  options: {
+    subTraits: {
+      zindex: 35,
+    }
+  } 
+}
+```
+## Different rendering options
+Consider the AnglerEyes trait in this repo. It's intended to have a light element, but was originally designed for the light to be a multiply layer:
+![subTraitsExamples](media/subtraits_light1.png)
+![subTraitsExamples](media/subtraits_light2.png)
+When exported as a layer, the light element simply looks like this:
+![subTraitsExamples](media/subtraits_light3.png)
+To address this, we can use the subTraits system. We add a folder called 'AnglerEyes' to match the primary trait, and add the light element inside it:
+![subTraitsExamples](media/subtraits_example3.png)
+The setup our subTraits in config.js like so (I've also added opacity here for demonstration):
+```js
+{ name: "Eyes",
+  options: {
+    subTraits: {
+      blend: MODE.multiply,
+      opacity: 0.5,
+      zindex: 35,
+    }
+  } 
+},
+```
+**NOTE**: If blend, opacity, or zindex are left undefined, they will use the primary trait's values
+
+# Z-Index
+Manually defining Z-Index allows you to override the layer in which traits are rendered in the final image. By default, each layer is assigned a Z-Index based on it's layersOrder index * 10. 
+```js
+layersOrder: [
+  { name: "SkeletalArms" }, // index 0, default Z-Index 0
+  { name: "SkeletalBack" }, // index 1, default Z-Index 10
+  { name: "SkeletalBody" }, // index 2, default Z-Index 20
+  { name: "SkeletalLegs" }, // index 3, default Z-Index 30
+  ...
+]
+```
+
+## Z-Index examples
+Z-Index can be overridden in two ways. First, via the subTraits system. Examples can be seen [here](#subtrait-examples). Second, by prepending the trait file with Z-Index in the format `z##$`. Where `##` is replaced with the desired Z-Index.  
+![subTraitsExamples](media/zindex_traitExample.png)
+**NOTE**: You can change the Z-Index delimeter from `$` by editing 'zindexDelimiter' in config.js
+```js
+const zindexDelimiter = "$";
 ```
 
 # Stat blocks
@@ -327,14 +436,20 @@ const layerConfigurations = [
   },
   {
     growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
-    namePrefix: 'Alternate Name',
+    namePrefix: `Skeletal ${collectionName}`,
     description: 'Alternate Description for this set of tokens',
     layersOrder: [
-      { name: "Arms" },
-      { name: "Back" },
-      { name: "Body" },
-      { name: "Head" },
-      { name: "Mouth" },
+      { name: "SkeletalArms" },
+      { name: "SkeletalBack" }, 
+      { name: "SkeletalBody" }, 
+      { name: "SkeletalLegs" }, 
+      { name: "SkeletalAccessories", 
+        options: {
+          subTraits: {
+            zindex: 35,
+          }
+        } 
+      }
     ],
   },
 ];

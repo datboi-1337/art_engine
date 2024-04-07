@@ -374,7 +374,7 @@ const checkVariant = (_variant, _traitObj) => {
   return tempObj;
 }
 
-const checkSubTraits = (_subTraits, _traitObj) => {
+const checkSubTraits = (layer, _traitObj) => {
   // need to return elements array with subtraits appended?
   let tempArr = [];
   let tempObj = {..._traitObj};
@@ -411,13 +411,14 @@ const checkSubTraits = (_subTraits, _traitObj) => {
           let subTraitPath = `${layerPath}${tempObj.name}/${subTraitfilename}`;
           let subTraitExists = fs.existsSync(subTraitPath);
           let subTraitZindex = getZIndex(subTraitfilename);
+          
           if (subTraitExists) {
             subObj.name = subTrait;
             subObj.filename = subTraitfilename;
             subObj.path = subTraitPath;
-            subObj.blend = _subTraits.blend;
-            subObj.opacity = _subTraits.opacity;
-            subObj.zindex = !isNaN(subTraitZindex) ? subTraitZindex : _subTraits.zindex;
+            subObj.blend = layer.subTraits.blend ? layer.subTraits.blend : layer.blend;
+            subObj.opacity = layer.subTraits.opacity ? layer.subTraits.opacity : layer.opacity;
+            subObj.zindex = !isNaN(subTraitZindex) ? subTraitZindex : layer.subTraits.zindex ? layer.subTraits.zindex : tempObj.zindex;
           } else {
             return;
           }
@@ -437,7 +438,9 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     if (_dna.split(DNA_DELIMITER)[index] == undefined) {
       console.log(_dna);
       console.log(allTraitsCount);
-      throw new Error(`Blank DNA. This error should not happen anymore. Please send @datboi details`);
+      throw new Error(`Blank DNA. This can be caused by multiple traits with the same cleanName. `+
+        `Please review the trait files in your ${layer.name} folder. If you're still running into`+
+        ` issues, please send details to @datboi for assistance`);
     }
 
     let selectedElement = layer.elements.find(
@@ -451,12 +454,13 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
 
-    let selectedSubTraits = checkSubTraits(layer.subTraits, selectedElement);
+    let selectedSubTraits = checkSubTraits(layer, selectedElement);
 
     // console.log(selectedElement);
     // console.log(selectedSubTraits);
 
     if (_dna.search(selectedElement.name) < 0) {
+      console.log(allTraitsCount);
       console.log(_dna);
       console.log(selectedElement);
       throw new Error(`${selectedElement.name} missing from DNA. This error should not happen anymore. Please send @datboi details`);
@@ -789,6 +793,8 @@ const scaleWeight = (layer, layerWeight, layerConfigIndex, forcedCombinations) =
           element.weight = scaledWeight;
         }
       }
+
+      // console.log(element);
     });
 
     if (debugLogs) {
@@ -942,7 +948,7 @@ const startCreating = async () => {
       scaleWeight(layer, layersOrderSize, layerConfigIndex, forcedCombinations);
     });
     allTraitsCount = traitCount(layers);
-    // console.log(allTraitsCount)
+    console.log(allTraitsCount)
     debugLogs ? console.log(allTraitsCount) : null;
     while (
       editionCount <= cumulativeEditionSize
