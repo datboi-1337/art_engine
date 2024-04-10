@@ -379,50 +379,47 @@ const checkSubTraits = (layer, _traitObj) => {
   let tempArr = [];
   let tempObj = {..._traitObj};
 
-  // console.log(tempObj);
-
   // Clean layer path
   let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
-
-  // console.log('path');
-  // console.log(layerPath);
 
   // Filter for subTrait folders
   let subTraitFolders = fs
     .readdirSync(`${layerPath}`)
     .filter((item) => {
-      // console.log('item');
-      // console.log(item);
       const fullPath = layerPath + item;
       return fs.statSync(fullPath).isDirectory() && !/(^|\/)\.[^\/\.]/g.test(item);
     });
 
-    // console.log(subTraitFolders);
-  
-  // Pull variant trait if it exists, do nothing if it doesn't
+  // Pull subTrait if it exists, do nothing if it doesn't
   if (subTraitFolders.length > 0) {
     subTraitFolders.forEach((folder) => {
       if (folder == tempObj.name) {
         let subTraits = fs.readdirSync(`${layerPath}${tempObj.name}`);
         let cleanTraits = subTraits.map((file) => cleanName(file));
         cleanTraits.forEach((subTrait, index) => {
-          let subObj = {};
-          let subTraitfilename = subTraits[index];
-          let subTraitPath = `${layerPath}${tempObj.name}/${subTraitfilename}`;
-          let subTraitExists = fs.existsSync(subTraitPath);
-          let subTraitZindex = getZIndex(subTraitfilename);
-          
-          if (subTraitExists) {
-            subObj.name = subTrait;
-            subObj.filename = subTraitfilename;
-            subObj.path = subTraitPath;
-            subObj.blend = layer.subTraits.blend ? layer.subTraits.blend : layer.blend;
-            subObj.opacity = layer.subTraits.opacity ? layer.subTraits.opacity : layer.opacity;
-            subObj.zindex = !isNaN(subTraitZindex) ? subTraitZindex : layer.subTraits.zindex ? layer.subTraits.zindex : tempObj.zindex;
-          } else {
-            return;
+          for (let i = 0; i < layer.subTraits.length; i++) {
+            if (subTrait == layer.subTraits[i].name || layer.subTraits[i].name == undefined) {
+              let subObj = {};
+              let subTraitfilename = subTraits[index];
+              let subTraitPath = `${layerPath}${tempObj.name}/${subTraitfilename}`;
+              let subTraitExists = fs.existsSync(subTraitPath);
+              let subTraitZindex = getZIndex(subTraitfilename);
+              
+              if (subTraitExists) {
+                subObj.name = subTrait;
+                subObj.filename = subTraitfilename;
+                subObj.path = subTraitPath;
+                subObj.blend = layer.subTraits[i].blend ? layer.subTraits[i].blend : layer.blend;
+                subObj.opacity = layer.subTraits[i].opacity ? layer.subTraits[i].opacity : layer.opacity;
+                subObj.zindex = !isNaN(subTraitZindex) ? subTraitZindex : layer.subTraits[i].zindex ? layer.subTraits[i].zindex : tempObj.zindex;
+              } else {
+                return;
+              }
+              tempArr.push(subObj);
+            }
+            
           }
-          tempArr.push(subObj);
+          
         });
       }
     });

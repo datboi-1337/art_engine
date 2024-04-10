@@ -52,20 +52,25 @@ const layerConfigurations = [
       { name: "Back" },
       { name: "Body", 
         options: {
-          subTraits: {
+          subTraits: [
+            {
             blend: MODE.multiply,
             opacity: 0.5,
             zindex: 25,
-          }
+            }
+          ]
         } 
       },
       { name: "Eyes",
         options: {
-          subTraits: {
+          subTraits: [
+            {
+            name: "Shadow",
             blend: MODE.multiply,
             opacity: 0.5,
             zindex: 35,
-          }
+            }
+          ]
         } 
       },
       { name: "Head" },
@@ -84,9 +89,11 @@ const layerConfigurations = [
       { name: "SkeletalLegs" }, 
       { name: "SkeletalAccessories", 
         options: {
-          subTraits: {
+          subTraits: [
+            {
             zindex: 35,
-          }
+            }
+          ]
         } 
       }
     ],
