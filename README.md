@@ -33,6 +33,9 @@ Use Node 18-20
 ## Additional network selections
 - [Metadata standard output for Ethereum, Solana, and SEI](#network-selection)
 
+## Opensea Drop output
+- [Opensea drop metadata CSV output](#opensea-drop-csv-output)
+
 ## Named rarity weight
 - [Use named weights instead of numbers in filename](#use-named-weight-instead-of-filename)
   - [Named weight example](#named-weight-example)
@@ -53,6 +56,9 @@ Use Node 18-20
 ## Z-Index system
 - [Override layerOrder with Z-Index](#z-index)
   - [Z-Index examples](#z-index-examples)
+
+## Exclude layer option
+- [Exclude layer from metadata](#exclude-layer-from-metadata)
 
 ## Add stat blocks
 - [Assign randomized stats within defined range to each NFT!](#stat-blocks)
@@ -109,6 +115,8 @@ Use Node 18-20
 # Split metadata and image generation
 All metadata will be generated immediately upon running `npm run generate`. This allows generation to happen much faster, and provides a trait breakdown in the terminal upon completion, with a prompt to continue to photo generation. Any issues with metadata/compatibility can be seen and rectified much faster, then when all is well, image generation can take place. 
 ![photoGeneration](media/proceed_to_photo_generation.png)
+
+**NOTE**: Your most recent generation is cached in build/json/_imgData.json. You can regenerate images again with the command `npm run generate_photos`. This is especially useful when a trait needs to be edited, since you can regenerate the images without needing to *also* regenerate the metadata. 
 
 # Compatibility Wizard
 You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
@@ -190,6 +198,15 @@ If you need to define multiple incompatibilities/forced combinations, and you do
 
 # Network selection
 This fork will generate metadata for Ethereum, Solana, and SEI. Most EVM chains follow Ethereum metadata standards. Please be sure to define all General metadata in config.js, as well as `solanaMetadata` if generating for Solana. 
+```js
+const network = NETWORK.eth; // EVM chains
+const network = NETWORK.sol; // Solana
+const network = NETWORK.sei; // SEI
+```
+**NOTE**: When network is set to to either sol or sei, build/assets will be populated with all json and image files for easy upload. 
+
+# Opensea drop csv output
+If you're using Opensea drops, you can utilize the _metadata.csv file found in build/opensea-drop and the images in build/images to upload directly in Opensea studio. The csv file is formatted for opensea drops, and the individual files in build/opensea-drop/json are simply duplicates of the individual json files without the .json extention in case you're uploading directly with setBaseUri on the Opensea drop contracts.  
 
 # Use named weights instead of numbers in filename
 This fork gives the option to use a simpler weight system by using common rarity names (Common, Uncommon, Rare, Epic, Legenedary, and Mythic) instead of numbers. Weight will be calculated based on named value. Please reference `rarity_config` in config.js for more detail. The values in `rarity_config` can be edited, if needed. 
@@ -333,6 +350,12 @@ Z-Index can be overridden in two ways. First, via the subTraits system. Examples
 **NOTE**: You can change the Z-Index delimeter from `$` by editing 'zindexDelimiter' in config.js
 ```js
 const zindexDelimiter = "$";
+```
+
+# Exclude layer from metadata
+If you need to exclude a layer from the final metadata output, you can set the `exclude` option to `true`. In this example, the layer (trait_type) 'SkeletalArms' will not appear in the metadata at all, but will still be rendered in the final image. 
+```js
+{ name: "SkeletalArms", options: { exclude: true } },
 ```
 
 # Stat blocks
