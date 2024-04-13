@@ -284,9 +284,11 @@ Then, we can set config.js like so, being sure to make the zindex lower than the
 ```js
 { name: "SkeletalAccessories", 
   options: {
-    subTraits: {
+    subTraits: [
+      {
       zindex: 35,
-    }
+      }
+    ]
   } 
 }
 ```
@@ -297,6 +299,7 @@ Consider the AnglerEyes trait in this repo. It's intended to have a light elemen
 <br/>
 ![subTraitsExamples](media/subTraits_light2.png)
 <br/>
+
 When exported as a layer, the light element simply looks like this:
 ![subTraitsExamples](media/subTraits_light3.png)
 To address this, we can use the subTraits system. We add a folder called 'AnglerEyes' to match the primary trait, and add the light element inside it:
@@ -305,13 +308,40 @@ The setup our subTraits in config.js like so (I've also added opacity here for d
 ```js
 { name: "Eyes",
   options: {
-    subTraits: {
+    subTraits: [
+      {
       blend: MODE.multiply,
       opacity: 0.5,
       zindex: 35,
-    }
+      }
+    ]
   } 
 },
+```
+
+## Multiple subTrait options
+Now, what if you had a trait that needed multiple different options? For example, let's say the seaweed trait from above also emitted a light:
+![subTraitsExamples](media/subTraits_combo1.png)
+The Seaweed subTrait folder would now look like this: 
+![subTraitsExamples](media/subTraits_combo2.png)
+You don't want to blanket assign `blend: MODE.multiply` and `opacity: 0.5`, because then the seaweed behind the fish would also inherit those rules. So to address this, you can assign specific rules to specific subTraits by calling them by name like so:
+```js
+{ name: "SkeletalAccessories", 
+  options: {
+    subTraits: [
+      {
+        name: "Behind",
+        zindex: 35,
+      },
+      {
+        name: "Light",
+        blend: MODE.multiply,
+        opacity: 0.5,
+        zindex: 35,
+      }
+    ]
+  } 
+}
 ```
 **NOTE**: If blend, opacity, or zindex are left undefined, they will use the primary trait's values
 
