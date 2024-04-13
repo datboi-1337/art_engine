@@ -48,7 +48,6 @@ const oldDna = `${basePath}/build_old/_oldDna.json`;
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
 const { traitCounts, incompatibleNest, compatibleNest } = require(`${basePath}/modules/isCompatible.js`);
 const cliProgress = require('cli-progress');
-// let compatibility = nest;
 let incompatibilities;
 
 let hashlipsGiffer = null;
@@ -57,14 +56,18 @@ let allTraitsCount;
 const buildSetup = () => {
   if (!fs.existsSync(buildDir)) {
     fs.mkdirSync(buildDir);
+    fs.mkdirSync(`${buildDir}/assets`);
     fs.mkdirSync(`${buildDir}/json`);
-    fs.mkdirSync(`${buildDir}/json-drop`);
+    fs.mkdirSync(`${buildDir}/opensea-drop`);
+    fs.mkdirSync(`${buildDir}/opensea-drop/json`);
     fs.mkdirSync(`${buildDir}/images`);
   } else {
     fs.rmSync(buildDir, { recursive: true } );
     fs.mkdirSync(buildDir);
+    fs.mkdirSync(`${buildDir}/assets`);
     fs.mkdirSync(`${buildDir}/json`);
-    fs.mkdirSync(`${buildDir}/json-drop`);
+    fs.mkdirSync(`${buildDir}/opensea-drop`);
+    fs.mkdirSync(`${buildDir}/opensea-drop/json`);
     fs.mkdirSync(`${buildDir}/images`);
   }
   if (gif.export) {
@@ -185,6 +188,10 @@ const layersSetup = (layersOrder) => {
       layerObj.options?.["subTraits"] != undefined
         ? layerObj.options?.["subTraits"]
         : false,
+    exclude: 
+        layerObj.options?.["exclude"] != undefined
+        ? layerObj.options?.["exclude"]
+        : false,
   }));
   return layers;
 };
@@ -196,6 +203,14 @@ const saveImage = (_editionCount) => {
       resolution: format.dpi,
     }),
   );
+  if (network == NETWORK.sol || network == NETWORK.sei) {
+    fs.writeFileSync(
+      `${buildDir}/assets/${_editionCount}.png`,
+      canvas.toBuffer("image/png", {
+        resolution: format.dpi,
+      }),
+    );
+  }
 };
 
 const genColor = () => {
@@ -275,7 +290,8 @@ const addAttributes = (_element) => {
       blend: _element.blend,
       opacity: _element.opacity,
       zindex: _element.zindex,
-    }
+    },
+    exclude: _element.exclude
   });
   // Add additional imgData for subTraits
   if (_element.subTraits.length > 0) {
@@ -432,6 +448,8 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
   let variant = '';
   let mappedDnaToLayers = _layers.map((layer, index) => {
 
+    // console.log(layer);
+
     if (_dna.split(DNA_DELIMITER)[index] == undefined) {
       console.log(_dna);
       console.log(allTraitsCount);
@@ -471,6 +489,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       ogName: layer.ogName,
       zindex: selectedElement.zindex,
       subTraits: selectedSubTraits,
+      exclude: layer.exclude,
     };
   });
   return mappedDnaToLayers;
@@ -546,7 +565,7 @@ const createDnaExact = (_layers, layerConfigIndex) => {
             compatibleCount = incompatibilities[incompatibility][index].maxCount;
             
             if(compatibleCount == 0) {
-              console.log(`All ${compatibleChild} distributed`);
+              debugLogs ? console.log(`All ${compatibleChild} distributed`) : null;
               delete incompatibilities[incompatibility][index];
             }
           }
@@ -675,11 +694,15 @@ const sortedMetadata = () => {
   let files = fs.readdirSync(`${buildDir}/json`);
   let filenames  = [];
   let allMetadata = [];
+  let csvData = [];
+  let attributeTraitTypes = new Set();
+
   files.forEach(file => {
     const str = file
     const filename = Number(str.split('.').slice(0, -1).join('.'));
     return filenames.push(filename);
   })
+
   filenames.sort(function(a, b) {
     return a - b;
   });
@@ -688,18 +711,75 @@ const sortedMetadata = () => {
     if (!isNaN(filenames[i]) && filenames[i] != -1) {
       let rawFile = fs.readFileSync(`${basePath}/build/json/${filenames[i]}.json`);
       let data = JSON.parse(rawFile);
-      
-      for (let i = 0; i < data.attributes.length; i++) {
+
+      // Clean metadata to only include trait_type and value for final output
+      for (let i = data.attributes.length - 1; i >= 0; i--) {
         delete data.attributes[i].imgData;
+        if (!Object.keys(data.attributes[i]).length > 0 || data.attributes[i].exclude) {
+          data.attributes.splice(i, 1);
+        } else {
+          delete data.attributes[i].exclude;
+        }
+      }
+
+      data.attributes.forEach(attr => {
+        attributeTraitTypes.add(attr.trait_type);
+      });
+    }
+  }
+
+  for (let i = 0; i < filenames.length; i++) {
+    if (!isNaN(filenames[i]) && filenames[i] != -1) {
+      let rawFile = fs.readFileSync(`${basePath}/build/json/${filenames[i]}.json`);
+      let data = JSON.parse(rawFile);
+      
+      // Clean metadata to only include trait_type and value for final output
+      for (let i = data.attributes.length - 1; i >= 0; i--) {
+        delete data.attributes[i].imgData;
+        if (!Object.keys(data.attributes[i]).length > 0 || data.attributes[i].exclude) {
+          data.attributes.splice(i, 1);
+        } else {
+          delete data.attributes[i].exclude;
+        }
       }
 
       fs.writeFileSync(`${basePath}/build/json/${data.edition}.json`, JSON.stringify(data, null, 2));
+      // Save metadata & images together for Solana / SEI
+      if (network == NETWORK.sol || network == NETWORK.sei) {
+        fs.writeFileSync(`${basePath}/build/assets/${data.edition}.json`, JSON.stringify(data, null, 2))
+      }
       // Save copy without file extension for opensea drop contracts
-      fs.writeFileSync(`${basePath}/build/json-drop/${data.edition}`, JSON.stringify(data, null, 2));
+      fs.writeFileSync(`${basePath}/build/opensea-drop/json/${data.edition}`, JSON.stringify(data, null, 2));
+
       allMetadata.push(data);
+
+      let csvRow = {};
+
+      csvRow.tokenID = data.edition;
+
+      csvRow.file_name = `${data.edition}.png`;
+
+      attributeTraitTypes.forEach(traitType => {
+        const attribute = data.attributes.find(attr => attr.trait_type === traitType);
+        csvRow[`attributes[${traitType}]`] = attribute ? attribute.value : null;
+      });
+
+      Object.keys(data).forEach(key => {
+        if (key !== 'edition' && key !== 'image' &&  key !== 'attributes' ) {
+          csvRow[key] = data[key];
+        }
+      });
+
+      csvData.push(csvRow);
     } 
   }
   fs.writeFileSync(`${buildDir}/json/_metadata.json`, JSON.stringify(allMetadata, null, 2));
+
+  let csvHeaders = Object.keys(csvData[0]).join(',') + '\n';
+  let csvRows = csvData.map(row => Object.values(row).join(',')).join('\n');
+  let csvContent = csvHeaders + csvRows;
+  fs.writeFileSync(`${buildDir}/opensea-drop/_metadata.csv`, csvContent);
+
   console.log(`Ordered all items numerically in _metadata.json. Saved in ${basePath}/build/json`);
 }
 
@@ -934,6 +1014,9 @@ const startCreating = async () => {
 
   const forcedCombinations = forcedCombinationsSetup();
 
+  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  progressBar.start(collectionSize, 0);
+
   while (layerConfigIndex < layerConfigurations.length) {
     layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder
@@ -945,7 +1028,7 @@ const startCreating = async () => {
       scaleWeight(layer, layersOrderSize, layerConfigIndex, forcedCombinations);
     });
     allTraitsCount = traitCount(layers);
-    console.log(allTraitsCount)
+    // console.log(allTraitsCount)
     debugLogs ? console.log(allTraitsCount) : null;
     while (
       editionCount <= cumulativeEditionSize
@@ -985,16 +1068,17 @@ const startCreating = async () => {
         addMetadata(newDna, name, desc, abstractedIndexes[0]+resumeNum);
         saveMetaDataSingleFile(abstractedIndexes[0]+resumeNum);
 
-        console.log(
-          `Created edition: ${abstractedIndexes[0]+resumeNum}, with DNA: ${sha1(
-            newDna
-          )}`
-        );
+        // console.log(
+        //   `Created edition: ${abstractedIndexes[0]+resumeNum}, with DNA: ${sha1(
+        //     newDna
+        //   )}`
+        // );
         dnaList.add(filterDNAOptions(newDna));
         editionCount++;
         abstractedIndexes.shift();
+        progressBar.increment();
       } else {
-        console.log("DNA exists!");
+        // console.log("DNA exists!");
         failedCount++;
         if (failedCount >= uniqueDnaTorrance) {
           console.log(
@@ -1006,13 +1090,14 @@ const startCreating = async () => {
     }
     layerConfigIndex++;
   }
+  progressBar.stop();
   if (network == NETWORK.sei) {
     let collectionMetadata = {
       name: collectionName,
       image: "-1.png",
     }
     fs.writeFileSync(`${basePath}/build/json/-1.json`, JSON.stringify(collectionMetadata, null, 2));
-    fs.writeFileSync(`${basePath}/build/json-drop/-1`, JSON.stringify(collectionMetadata, null, 2));
+    fs.writeFileSync(`${basePath}/build/opensea-drop/json/-1`, JSON.stringify(collectionMetadata, null, 2));
   }
   writeMetaData(JSON.stringify(metadataList, null, 2));
   sortedMetadata();
@@ -1117,8 +1202,11 @@ const createPNG = async () => {
     drawBackground();
   }
 
-  const startTime = process.hrtime();
-  let singleImageTimeMs = 0;
+  // const startTime = process.hrtime();
+  // let singleImageTimeMs = 0;
+
+  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  progressBar.start(editionSize, 0);
 
   let i = 0;
   for (const item of data) {
@@ -1150,25 +1238,27 @@ const createPNG = async () => {
     }
     
     saveImage(item.edition);
-    console.log(`Generated photo for edition ${item.edition}`);
+    // console.log(`Generated photo for edition ${item.edition}`);
 
-    const elapsedTime = process.hrtime(startTime);
-    const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
+    // const elapsedTime = process.hrtime(startTime);
+    // const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
 
-    // Calculate time for one image
-    if (i === 1) {
-      singleImageTimeMs = elapsedMs;
-      const totalTimeMs = singleImageTimeMs * editionSize;
-      const remainingTimeMs = totalTimeMs - singleImageTimeMs;
+    // // Calculate time for one image
+    // if (i === 1) {
+    //   singleImageTimeMs = elapsedMs;
+    //   const totalTimeMs = singleImageTimeMs * editionSize;
+    //   const remainingTimeMs = totalTimeMs - singleImageTimeMs;
 
-      const remainingTimeSeconds = remainingTimeMs / 1000;
-      console.log()
-      console.log(`Estimated time for remaining ${editionSize - 1} images: ${formatTime(remainingTimeSeconds)}`);
+    //   const remainingTimeSeconds = remainingTimeMs / 1000;
+    //   console.log()
+    //   console.log(`Estimated time for remaining ${editionSize - 1} images: ${formatTime(remainingTimeSeconds)}`);
       
-      // Wait for 5 seconds before continuing
-      await delay(5000);
-    }
+    //   // Wait for 5 seconds before continuing
+    //   await delay(5000);
+    // }
+    progressBar.increment();
   }
+  progressBar.stop();
 };
 
 module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createPNG };

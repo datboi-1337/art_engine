@@ -83,7 +83,7 @@ const layerConfigurations = [
     namePrefix: `Skeletal ${collectionName}`,
     description: 'Alternate Description for this set of tokens',
     layersOrder: [
-      { name: "SkeletalArms" },
+      { name: "SkeletalArms", options: { exclude: true } },
       { name: "SkeletalBack" }, 
       { name: "SkeletalBody" }, 
       { name: "SkeletalLegs" }, 
