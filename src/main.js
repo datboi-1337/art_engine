@@ -545,7 +545,7 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
 
 const createDnaExact = (_layers, layerConfigIndex) => {
   let randNum = [];
-  let nestLookup = []
+  let nestLookup = [];
 
   const incompatibleTraits = Object.keys(incompatibilities);
 
@@ -565,7 +565,7 @@ const createDnaExact = (_layers, layerConfigIndex) => {
             compatibleChild = [];
             compatibleChild.push(incompatibility);
             parentIndex = incompatibilities[incompatibility][index].parentIndex;
-            compatibleCount = incompatibilities[incompatibility][index].maxCount;
+            compatibleCount = allTraitsCount[_layers[incompatibilities[incompatibility][index].childIndex].name][compatibleChild[0]];
             
             if(compatibleCount == 0) {
               debugLogs ? console.log(`All ${compatibleChild} distributed`) : null;
