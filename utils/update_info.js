@@ -30,7 +30,7 @@ data.forEach((item) => {
     JSON.stringify(item, null, 2)
   );
   fs.writeFileSync(
-    `${basePath}/build/json-drop/${item.edition}`,
+    `${basePath}/build/opensea-drop/json/${item.edition}`,
     JSON.stringify(item, null, 2)
   );
 });
