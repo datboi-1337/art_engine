@@ -111,14 +111,14 @@ const getZIndex = (_str) => {
   return zindex;
 };
 
-const getRarityWeight = (_str) => {
+const getRarityWeight = (_str, _path) => {
   let weight = capitalizeFirstLetter(_str.slice(0, -4).split(rarityDelimiter).pop());
   if (exactWeight) {
     var finalWeight = weight;
   } else if (isNaN(weight)) {
     // Ensure non-number weights appropriately adhere to rarity_config
     if (!rarity_config[weight]) {
-      throw new Error(`'${weight}' contained in ${_str} is not a valid rarity.` +
+      throw new Error(`'${weight}' contained in ${_path}${_str} is not a valid rarity.` +
       ` Please ensure your weights adhere to rarity_config.`);
     }
     let rarity = Object.keys(rarity_config);
@@ -156,7 +156,7 @@ const getElements = (path, _zindex) => {
         name: cleanName(i),
         filename: i,
         path: `${path}${i}`,
-        weight: getRarityWeight(i),
+        weight: getRarityWeight(i, path),
         weightLocked: false,
         zindex: !isNaN(zindex) ? zindex : _zindex * 10,
       };
