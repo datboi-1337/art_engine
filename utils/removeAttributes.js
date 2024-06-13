@@ -9,8 +9,10 @@ let removeValue = [ "None", "Test" ] //Enter values you want to remove here. (ie
 let removeTraitType = [ "Head" ] //Enter a Traits you want to remove here. (ie: "Head")
 
 // Read json data
-let rawdata = fs.readFileSync(`${basePath}/build/json/_metadata.json`);
-let data = JSON.parse(rawdata);
+let rawData = fs.readFileSync(`${basePath}/build/json/_metadata.json`);
+let rawImgData = fs.readFileSync(`${basePath}/build/json/_metadata.json`);
+let data = JSON.parse(rawData);
+let imgData = JSON.parse(rawImgData);
 
 // Create new directory if it doesn't already exist
 const dir = `${basePath}/build_new/json`;
@@ -32,6 +34,18 @@ data.forEach((item) => {
   fs.writeFileSync(`${basePath}/build_new/json/${item.edition}.json`, JSON.stringify(item, null, 2));
 });
 
+imgData.forEach((item) => {
+  removeValue.forEach((traitValue) => {
+    let newValue = item.attributes.filter(obj=> obj.value !== traitValue);
+    item.attributes = newValue;
+  })
+  removeTraitType.forEach((traitType) => {
+    let newValue = item.attributes.filter(obj=> obj.trait_type !== traitType);
+    item.attributes = newValue;
+  })
+});
+
 fs.writeFileSync(`${basePath}/build_new/json/_metadata.json`, JSON.stringify(data, null, 2));
+fs.writeFileSync(`${basePath}/build_new/json/_metadata.json`, JSON.stringify(imgData, null, 2));
 
 console.log(`Removed all traits with ${removeValue} value(s) and ${removeTraitType} trait_type(s)`);
