@@ -76,6 +76,7 @@ const layerConfigurations = [
       { name: "Head" },
       { name: "Legs" },
       { name: "Mouth" },
+      { name: "Fix", options: { exclude: true } },
     ],
   },
   {

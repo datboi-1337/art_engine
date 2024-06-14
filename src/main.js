@@ -46,7 +46,7 @@ const DNA_DELIMITER = "-";
 const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
-const { traitCounts, incompatibleNest, compatibleNest } = require(`${basePath}/modules/isCompatible.js`);
+const { traitCounts, incompatibleNest, compatibleNest, layerIncompatibilities } = require(`${basePath}/modules/isCompatible.js`);
 const cliProgress = require('cli-progress');
 let incompatibilities;
 
@@ -544,56 +544,121 @@ const createDnaExact = (_layers, layerConfigIndex) => {
   let randNum = [];
   let nestLookup = [];
 
-  const incompatibleTraits = Object.keys(incompatibilities);
+  let incompatibleTraits = Object.keys(incompatibilities);
 
   let restrictedGeneration = false;
 
   if (incompatibleTraits.length > 0) {
     restrictedGeneration = true;
 
-    var compatibleChild, pIndex, parentIndex, compatibleCount;
-    incompatibleTraits.forEach((incompatibility) => {
+    var compatibleChild, pIndex, parentIndex, compatibleCount, childIndex;
+    
+    // Iterate over incompatibleTraits and check for the first with compatibleCount > 0
+    for (let i = 0; i < incompatibleTraits.length; i++) {
+      let incompatibility = incompatibleTraits[i];
       let parentIndexes = Object.keys(incompatibilities[incompatibility]);
       
       if (parentIndexes.length > 0) {
-        parentIndexes.forEach((index) => {
+        for (let j = 0; j < parentIndexes.length; j++) {
+          let index = parentIndexes[j];
           if (incompatibilities[incompatibility][index].layerIndex == layerConfigIndex) {
             pIndex = index;
-            compatibleChild = [];
-            compatibleChild.push(incompatibility);
+            compatibleChild = incompatibility;
             parentIndex = incompatibilities[incompatibility][index].parentIndex;
-            compatibleCount = allTraitsCount[_layers[incompatibilities[incompatibility][index].childIndex].name][compatibleChild[0]];
-            
-            if(compatibleCount == 0) {
-              debugLogs ? console.log(`All ${compatibleChild} distributed`) : null;
-              delete incompatibilities[incompatibility][index];
-            }
+            compatibleCount = allTraitsCount[_layers[incompatibilities[incompatibility][index].childIndex].name][compatibleChild];
+            childIndex = incompatibilities[incompatibility][index].childIndex;
           }
-        });
+        }
       } else {
         delete incompatibilities[incompatibility];
       }
-    });
+
+      if (compatibleCount > 0) {
+        break;
+      } else if (compatibleCount == 0) {
+        debugLogs ? console.log(`All ${compatibleChild} distributed`) : null;
+        delete incompatibilities[incompatibility][parentIndex];
+        // Update incompatibleTraits to ensure the end is caught
+        incompatibleTraits = Object.keys(incompatibilities); 
+      }
+    }
+  }
+
+  // Reset restrictedGeneration if all incompatible traits have been generated
+  if (incompatibleTraits.length == 1 && restrictedGeneration && compatibleCount == 0) {
+    debugLogs ? console.log(`All incompatible traits distributed`) : null;
+    restrictedGeneration = false;
   }
 
   _layers.forEach((layer, index) => {
-    let nest = {};
+        // let nest = {};
     
-    if (restrictedGeneration && compatibleCount > 0) {
-      nest = incompatibleNest[layerConfigIndex][compatibleChild]
-      if (layer.id === parentIndex) {
-        incompatibilities[compatibleChild[0]][pIndex].maxCount--;
-      }
+    // if (restrictedGeneration && compatibleCount > 0) {
+    //   nest = incompatibleNest[layerConfigIndex][compatibleChild]
+    //   if (layer.id === parentIndex) {
+    //     incompatibilities[compatibleChild[0]][pIndex].maxCount--;
+    //   }
+    // } else {
+    //   nest = compatibleNest[layerConfigIndex];
+    // }
+
+    // let compatibleTraits = Object.keys(nestLookup.reduce(
+    //   (a, trait) => a[trait], nest
+    // ));
+
+    // // console.log(compatibleTraits);
+
+    // let elements = []
+    // for (let i = 0; i < compatibleTraits.length; i++) {
+    //   for (let j = 0; j < layer.elements.length; j++) {
+    //     if (layer.elements[j].name == compatibleTraits[i]) {
+    //       tempElement = {
+    //         id: layer.elements[j].id,
+    //         name: layer.elements[j].name,
+    //         weight: layer.elements[j].weight
+    //       }
+    //       elements.push(tempElement);
+    //     }
+    //   }
+    // }
+
+    let compatibleTraits = [];
+
+    if (index === childIndex && restrictedGeneration) {
+      compatibleTraits = [compatibleChild];
+      // if (incompatibilities[compatibleChild][pIndex]) {
+      //   incompatibilities[compatibleChild][pIndex].maxCount--;
+      // }
     } else {
-      nest = compatibleNest[layerConfigIndex];
+      const allTraits = layerIncompatibilities[layerConfigIndex][index].traits;
+      let allCompatibleTraits = [];
+
+      let restrictedTraits = Object.keys(layerIncompatibilities[layerConfigIndex][index].restrictedTraits);
+      if (restrictedTraits.length > 0) {
+        restrictedTraits.forEach((restrictedTrait) => {
+          let allowedTraits = layerIncompatibilities[layerConfigIndex][index].restrictedTraits[restrictedTrait];
+
+          // If we're still in restricted generation, be sure to only include traits that are compatible with the current compatibleChild
+          if (restrictedGeneration && restrictedTrait == compatibleChild) {
+            allCompatibleTraits.push(allowedTraits);
+          }
+
+          // Always check nestLookup for previous layers to ensure there are no parent/child conflicts
+          if (nestLookup.includes(restrictedTrait)) {
+            allCompatibleTraits.push(allowedTraits);
+          }
+        });
+
+        // Check allCompatiblTraits and only keep traits that are compatible with all relevant traits. 
+        compatibleTraits = allTraits.filter(trait =>
+          allCompatibleTraits.every(restrictedArry => restrictedArry.includes(trait))
+        );
+      } else { 
+        compatibleTraits = allTraits;
+      }
     }
 
-    let compatibleTraits = Object.keys(nestLookup.reduce(
-      (a, trait) => a[trait], nest
-    ));
-
-    // console.log(compatibleTraits);
-
+    // Pull all element data for compatibleTraits
     let elements = []
     for (let i = 0; i < compatibleTraits.length; i++) {
       for (let j = 0; j < layer.elements.length; j++) {
@@ -1044,8 +1109,6 @@ const startCreating = async () => {
         results.forEach((layer) => {
           // Deduct selected layers from allTraitscount
           allTraitsCount[layer.name][layer.selectedElement.name]--;
-          // console.log('--------------------');
-          // console.log(layer);
 
           addAttributes(layer);
         })

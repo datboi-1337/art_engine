@@ -742,9 +742,9 @@ const incompatibleNestedStructureNew = async () => {
   });
 }
 
-let finalNest = {};
+let layerIncompatibilities = {};
 
-let finalNestedStructure = async () => {
+let createLayerIncompatibilities = async () => {
   /* 
     We're going to emulate some of the incompatibleNestedStructure() and compatibleNestedStructure() functions here.
     The goal is to create a final nested structure that includes all possible combinations, but excludes any incompatibilities.
@@ -824,13 +824,14 @@ let finalNestedStructure = async () => {
         subConcern: maxCount is getting reduced regardless of whether the image as a whole is selected. If a duplicate is generated, the maxCount is still reduced, 
         even though the metadata isn't valid. 
   */
-  const layerIncompatibilities = {};
 
   layers.forEach((layersOrder, index) => {
     const restricted = Object.keys(incompatibilities);
     layerIncompatibilities[index] = {};
 
     layersOrder.forEach((layer, layerIndex) => {
+      layerIncompatibilities[index][layerIndex] = {};
+
       const traits = Object.keys(compatibility[layer]);
       const restrictedTraits = {};
       const restrictedIndexes = [];
@@ -838,28 +839,37 @@ let finalNestedStructure = async () => {
       restricted.forEach((restrictedTrait) => {
         let parentIndexes = Object.keys(incompatibilities[restrictedTrait]);
 
-        // Create element in restrictedTraits for any incompatible parents
+        // Create elements in restrictedTraits for any incompatible parents
         if (traits.includes(restrictedTrait)) {
           parentIndexes.forEach((pIndex) => {
-            let incompatibleParents = incompatibilities[restrictedTrait][pIndex].incompatibleParents;
+            if (incompatibilities[restrictedTrait][pIndex].layerIndex == index) {
+              let incompatibleParents = incompatibilities[restrictedTrait][pIndex].incompatibleParents;
 
-            incompatibleParents.forEach((incompatibleParent) => {
-              if (!restrictedTraits[incompatibleParent]) {
-                restrictedTraits[incompatibleParent] = traits.filter((trait) => trait != restrictedTrait);
-              } else {
-                restrictedTraits[incompatibleParent] = restrictedTraits[incompatibleParent].filter((trait) => trait != restrictedTrait);
-              }
-            });
+              incompatibleParents.forEach((incompatibleParent) => {
+                if (!restrictedTraits[incompatibleParent]) {
+                  restrictedTraits[incompatibleParent] = traits.filter((trait) => trait != restrictedTrait);
+                } else {
+                  restrictedTraits[incompatibleParent] = restrictedTraits[incompatibleParent].filter((trait) => trait != restrictedTrait);
+                }
+
+                restrictedIndexes.push(incompatibilities[restrictedTrait][pIndex].parentIndex);
+              });
+            }
           });
-        } else { // Create element in restrictedTraits for any incompatible children
+        } else { // Create elements in restrictedTraits for any incompatible children
           parentIndexes.forEach((pIndex) => {
-            if (incompatibilities[restrictedTrait][pIndex].parentIndex == layerIndex) {
-              if (!restrictedTraits[restrictedTrait]) {
-                restrictedTraits[restrictedTrait] = incompatibilities[restrictedTrait][pIndex].parents;
-              } else {
-                // do a thing
+            if (incompatibilities[restrictedTrait][pIndex].layerIndex == index) {
+              compatibleParents = incompatibilities[restrictedTrait][pIndex].parents;
+
+              if (incompatibilities[restrictedTrait][pIndex].parentIndex == layerIndex) {
+                if (!restrictedTraits[restrictedTrait]) {
+                  restrictedTraits[restrictedTrait] = compatibleParents;
+                } else {
+                  throw new Error(`This shouldn't happen`);
+                }
+
+                restrictedIndexes.push(incompatibilities[restrictedTrait][pIndex].childIndex);
               }
-              restrictedIndexes.push(incompatibilities[restrictedTrait][pIndex].childIndex);
             }
           });
 
@@ -965,19 +975,25 @@ const compatibleNestedStructure = async => {
 const countAndSave = () => {
   incompatibleNestedStructure();
   compatibleNestedStructure();
+  createLayerIncompatibilities();
  
   console.log(`With the defined incompatibilites and available traits, `+
     `a maximum of ${maxCombinations} images can be generated`);
 
   // Save compatibility objects as JSON
-  const ijsonOutput = JSON.stringify(incompatibleNest, null, 2);
-  const ioutputFile = path.join(basePath, 'compatibility/incompatibleNest.json');
-  fs.writeFileSync(ioutputFile, ijsonOutput);
+  // const ijsonOutput = JSON.stringify(incompatibleNest, null, 2);
+  // const ioutputFile = path.join(basePath, 'compatibility/incompatibleNest.json');
+  // fs.writeFileSync(ioutputFile, ijsonOutput);
 
   // // Save compatibility objects as JSON
-  const cjsonOutput = JSON.stringify(compatibleNest, null, 2);
-  const coutputFile = path.join(basePath, 'compatibility/compatibleNest.json');
-  fs.writeFileSync(coutputFile, cjsonOutput);
+  // const cjsonOutput = JSON.stringify(compatibleNest, null, 2);
+  // const coutputFile = path.join(basePath, 'compatibility/compatibleNest.json');
+  // fs.writeFileSync(coutputFile, cjsonOutput);
+
+  // Save compatibility objects as JSON
+  const ljsonOutput = JSON.stringify(layerIncompatibilities, null, 2);
+  const loutputFile = path.join(basePath, 'compatibility/layerIncompatibilities.json');
+  fs.writeFileSync(loutputFile, ljsonOutput);
 
   // Save compatibility objects as JSON
   const jsonOutput = JSON.stringify(incompatibilities, null, 2);
@@ -989,4 +1005,15 @@ const countAndSave = () => {
   // console.log(traitCounts);
 }
 
-module.exports = { listCompatibility, nestedStructure, markIncompatible, markForcedCombination, checkCompatibility, countAndSave, traitCounts, incompatibleNest,  compatibleNest};
+module.exports = { 
+  listCompatibility, 
+  nestedStructure, 
+  markIncompatible, 
+  markForcedCombination, 
+  checkCompatibility, 
+  countAndSave, 
+  traitCounts, 
+  incompatibleNest,  
+  compatibleNest,
+  layerIncompatibilities,
+};
