@@ -46,7 +46,7 @@ const DNA_DELIMITER = "-";
 const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
-const { traitCounts, incompatibleNest, compatibleNest, layerIncompatibilities } = require(`${basePath}/modules/isCompatible.js`);
+const { traitCounts, layerIncompatibilities } = require(`${basePath}/modules/isCompatible.js`);
 const cliProgress = require('cli-progress');
 let incompatibilities;
 
@@ -541,7 +541,7 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
 };
 
 const createDnaExact = (_layers, layerConfigIndex) => {
-  let randNum = [];
+  let selectedTraits = [];
   let nestLookup = [];
 
   let incompatibleTraits = Object.keys(incompatibilities);
@@ -579,7 +579,8 @@ const createDnaExact = (_layers, layerConfigIndex) => {
         debugLogs ? console.log(`All ${compatibleChild} distributed`) : null;
         delete incompatibilities[incompatibility][parentIndex];
         // Update incompatibleTraits to ensure the end is caught
-        incompatibleTraits = Object.keys(incompatibilities); 
+        // incompatibleTraits = Object.keys(incompatibilities); 
+        // continue;
       }
     }
   }
@@ -591,37 +592,6 @@ const createDnaExact = (_layers, layerConfigIndex) => {
   }
 
   _layers.forEach((layer, index) => {
-        // let nest = {};
-    
-    // if (restrictedGeneration && compatibleCount > 0) {
-    //   nest = incompatibleNest[layerConfigIndex][compatibleChild]
-    //   if (layer.id === parentIndex) {
-    //     incompatibilities[compatibleChild[0]][pIndex].maxCount--;
-    //   }
-    // } else {
-    //   nest = compatibleNest[layerConfigIndex];
-    // }
-
-    // let compatibleTraits = Object.keys(nestLookup.reduce(
-    //   (a, trait) => a[trait], nest
-    // ));
-
-    // // console.log(compatibleTraits);
-
-    // let elements = []
-    // for (let i = 0; i < compatibleTraits.length; i++) {
-    //   for (let j = 0; j < layer.elements.length; j++) {
-    //     if (layer.elements[j].name == compatibleTraits[i]) {
-    //       tempElement = {
-    //         id: layer.elements[j].id,
-    //         name: layer.elements[j].name,
-    //         weight: layer.elements[j].weight
-    //       }
-    //       elements.push(tempElement);
-    //     }
-    //   }
-    // }
-
     let compatibleTraits = [];
 
     if (index === childIndex && restrictedGeneration) {
@@ -633,7 +603,10 @@ const createDnaExact = (_layers, layerConfigIndex) => {
       const allTraits = layerIncompatibilities[layerConfigIndex][index].traits;
       let allCompatibleTraits = [];
 
-      let restrictedTraits = Object.keys(layerIncompatibilities[layerConfigIndex][index].restrictedTraits);
+      // console.log(Object.keys(layerIncompatibilities[layerConfigIndex][index].restrictedTraits || {}));
+
+      let restrictedTraits = Object.keys(layerIncompatibilities[layerConfigIndex][index].restrictedTraits || {});
+      
       if (restrictedTraits.length > 0) {
         restrictedTraits.forEach((restrictedTrait) => {
           let allowedTraits = layerIncompatibilities[layerConfigIndex][index].restrictedTraits[restrictedTrait];
@@ -658,6 +631,8 @@ const createDnaExact = (_layers, layerConfigIndex) => {
       }
     }
 
+    // console.log(compatibleTraits);
+
     // Pull all element data for compatibleTraits
     let elements = []
     for (let i = 0; i < compatibleTraits.length; i++) {
@@ -681,25 +656,30 @@ const createDnaExact = (_layers, layerConfigIndex) => {
 
     // We keep the random function here to ensure we don't generate all the same layers back to back.
     let random = Math.floor(Math.random() * totalWeight);
+    // console.log(`random before: ${random}`);
     for (var i = 0; i < elements.length; i++) {
       // Check allTraitsCount for the selected element 
       let lookup = allTraitsCount[layer.name][elements[i].name];
       if (lookup > 0) {
         random -= allTraitsCount[layer.name][elements[i].name];
       }
+
+      // console.log(`Trait: ${elements[i].name} - Count: ${lookup} - Random: ${random}`);
+
       // Subtract the current weight from random until we reach a sub zero value.
       if (random < 0) {
         // Append new layer information to nestLookup
         nestLookup.push(elements[i].name);
         debugLogs ? console.log(`${elements[i].name} chosen for ${layer.name}`) : null;
-        return randNum.push(
+        return selectedTraits.push(
           `${elements[i].id}:${elements[i].name}` +
           `${layer.bypassDNA ? "?bypassDNA=true" : ""}`
         );
       }
     }
   });
-  return randNum.join(DNA_DELIMITER);
+
+  return selectedTraits.join(DNA_DELIMITER);
 };
 
 function countInstances(structure, targetTrait) {
@@ -1233,13 +1213,18 @@ const rarityBreakdown = () => {
   let layerExport = [];
 
   for (let i = 0; i < layerNames.length; i++) {
-    let layer = layerNames[i];
-    layerExport.push(layer);
-    layerExport.push(allLayers[layer]);
+    layerExport.push(allLayers[layerNames[i]]);
   }
 
-  console.log(layerExport);
+  // Sort layers alphabetically
+  for (let i = 0; i < layerExport.length; i++) {
+    layerExport[i].sort((a, b) => a.trait.localeCompare(b.trait));
+  }
 
+  for (let i = 0; i < layerExport.length; i++) {
+    console.log(`${layerNames[i]}: `);
+    console.log(layerExport[i]);
+  }
 }
 
 const formatTime = (totalSeconds) => {

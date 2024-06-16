@@ -95,11 +95,12 @@ Use Node 18-20
 
 ### Planned upcoming features coming soon
 
+[Track current progress and see upcoming features on the project's Trello board](https://trello.com/b/PsInWbHr/datlips-art-engine)
+
 - GIF generation 👀
 - Image/Metadata IPFS upload
-- Adding bulk entry to incompatibility wizard
 - Adding terminal interaction for most metadata manipulation utilities to avoid direct script editing
-- Cleanup terminal output for rarity during generation
+
 
 # General use
 0) (first time) run `npm install`
@@ -122,24 +123,24 @@ All metadata will be generated immediately upon running `npm run generate`. This
 You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
 
 # Incompatibility example
-With the default layers in this fork, we can define the following incompatibility (arbitraily chosen for demonstration): Eyes/EyeScar is not compatible with Back/StrapOnShark. We can tell the engine not to generate those items together like so:
+With the default layers in this fork, we can define the following incompatibility (arbitraily chosen for demonstration): `Eyes/EyeScar` is not compatible with `Back/StrapOnShark` and `Back/SharkFin`. We can tell the engine not to generate those items together like so:
 <br/>
 
 1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
 ![incompatibility1](media/incompatibility_prompt_1.png)
 2) Select Incompatibility
 ![incompatibility2](media/incompatibility_prompt_2.png)
-3) Select layer configuration index (if applicable)
+3) Select layer configuration index (only applicable if multiple layer configurations are defined in config.js)
 ![incompatibility3](media/incompatibility_prompt_3.png)
-4) Select the layer your *first* trait is located in 
+4) Select the layer your *parent* trait is located in 
 ![incompatibility4](media/incompatibility_prompt_4.png)
-5) Select the first trait
+5) Select the parent trait
 ![incompatibility5](media/incompatibility_prompt_5.png)
-6) Select the layer your *second* trait is located in
+6) Select the layer your *children* traits are located
 ![incompatibility6](media/incompatibility_prompt_6.png)
-7) Select the second trait
+7) Select the children trait(s)
 ![incompatibility7](media/incompatibility_prompt_7.png)
-8) Engine will mark incompatitbility and prompt you to enter any other incompatibilities or forced combinations.
+8) Engine will mark incompatitbilities and prompt you to enter any other incompatibilities or forced combinations.
 ![incompatibility8](media/incompatibility_prompt_8.png)
 
 # Forced combination example
@@ -149,19 +150,19 @@ We can define the following forced combination (again, arbitraily chosen for dem
 1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
 ![incompatibility1](media/incompatibility_prompt_1.png)
 2) Select Forced Combination
-![incompatibility2](media/incompatibility_prompt_2fc.png)
+![incompatibility2](media/forcedCombination_prompt_2.png)
 3) Select layer configuration index (if applicable)
-![incompatibility3](media/incompatibility_prompt_3fc.png)
+![incompatibility3](media/forcedCombination_prompt_3.png)
 4) Select the layer your *first* trait is located in 
-![incompatibility4](media/incompatibility_prompt_4fc.png)
+![incompatibility4](media/forcedCombination_prompt_4.png)
 5) Select the first trait
-![incompatibility5](media/incompatibility_prompt_5fc.png)
+![incompatibility5](media/forcedCombination_prompt_5.png)
 6) Select the layer your *second* trait is located in
-![incompatibility6](media/incompatibility_prompt_6fc.png)
+![incompatibility6](media/forcedCombination_prompt_6.png)
 7) Select the second trait
-![incompatibility7](media/incompatibility_prompt_7fc.png)
+![incompatibility7](media/forcedCombination_prompt_7.png)
 8) Engine will mark forced and prompt you to enter any other incompatibilities or forced combinations.
-![incompatibility8](media/incompatibility_prompt_8fc.png)
+![incompatibility8](media/forcedCombination_prompt_8.png)
 
 **NOTE**: Incompatibilities and forced combinations are not lost in cases where generation needs to be run again. If you've previously run the compatibility wizard or incompatibilities have been defined manually (see Advanced incompatibility below), you will be prompted to review existing incompatibilities, then asked to either proceed with generation, add more incompatibilities, or remove all incompatibilities to start fresh (you will be prompted to add incompatibilities again, if needed).
 
