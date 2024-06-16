@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const basePath = process.cwd();
 const { format, layerConfigurations, rarityDelimiter, zindexDelimiter } = require(`${basePath}/src/config.js`);
-const { Select, MultiSelect  } = require('enquirer');
+const { Select } = require('enquirer');
 const cliProgress = require('cli-progress');
 // const { createCanvas, loadImage } = require("canvas");
 
@@ -200,7 +200,7 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
     incompatibilities[_child][_parentIndex].parents = remainingParents
   }
 
-  // console.log(`${_incompatibleParent} marked incompatible with ${_child}`);
+  console.log(`${_incompatibleParent} marked incompatible with ${_child}`);
 }
 
 const markForcedCombination = async (_child, _forcedParent, _parentIndex, _childIndex, _layerIndex) => {
@@ -236,7 +236,7 @@ const markForcedCombination = async (_child, _forcedParent, _parentIndex, _child
     incompatibilities[_child][_parentIndex].parents = parents
   }
 
-  // console.log(`${_forcedParent} marked forced with ${_child}`);
+  console.log(`${_forcedParent} marked forced with ${_child}`);
 }
 
 const checkCompatibility = async () => {
@@ -244,199 +244,128 @@ const checkCompatibility = async () => {
     name: 'Incompatibility/Forced Combination',
     message: 'Are you defining an incompatibility or a forced combination?',
     choices: ['Incompatibility', 'Forced Combination'],
-  });
+  })
 
-  const typeChoice = await selectType.run();
-
-  const forcedCombination = typeChoice === 'Forced Combination';
+  const forcedCombination = await selectType.run() == 'Forced Combination';
 
   const selectLayersOrder = new Select({
     name: 'layersOrder',
     message: 'Which layer configuration index? (starts at 0)',
     choices: Object.keys(nest),
+  })
+
+  const layersOrder = Object.keys(nest).length > 1 ? await selectLayersOrder.run() : 0;
+
+  const selectFirstLayer = new Select({
+    name: 'layer',
+    message: 'Select the first layer?',
+    choices: layers[layersOrder].slice(0, -1).map(layer => layer),
   });
 
-  let layersOrderChoice = Object.keys(nest).length > 1 ? await selectLayersOrder.run() : 0;
+  const firstLayer = await selectFirstLayer.run();
+  const indexOfFirstLayer = layers[layersOrder].findIndex(layer => layer === firstLayer);
 
-  const layersOrder = parseInt(layersOrderChoice);
+  const selectFirstTrait = new Select({
+    name: 'trait',
+    message: 'Select first trait:',
+    choices: Object.keys(compatibility[firstLayer]),
+  });
 
-  let firstLayerChoice;
-  let firstTraitChoice;
-  let secondLayerChoice;
-  let selectedTraits;
-  let indexOfFirstLayer;
-  let indexOfSecondLayer;
+  const firstTrait = await selectFirstTrait.run();
 
-  while (true) {
-    let goBackToFirstLayer = false;
+  const choicesForSecondLayer = layers[layersOrder].slice(indexOfFirstLayer + 1).map(layer => layer);
 
-    while (true) {
-      const selectFirstLayer = new Select({
-        name: 'layer',
-        message: 'Select the first (parent) layer:',
-        choices: layers[layersOrder].slice(0, -1).map(layer => layer).concat('Go Back'),
-      });
+  const selectSecondLayer = new Select({
+    name: 'layer',
+    message: 'Select the second layer:',
+    choices: choicesForSecondLayer,
+  });
 
-      firstLayerChoice = await selectFirstLayer.run();
+  const secondLayer = await selectSecondLayer.run();
+  const indexOfSecondLayer = layers[layersOrder].findIndex(layer => layer === secondLayer);
 
-      if (firstLayerChoice === 'Go Back') {
-        continue;
-      }
+  const selectSecondTrait = new Select({
+    name: 'trait',
+    message: forcedCombination ? 'Select the forced trait' : 'Select incompatible trait',
+    choices: Object.keys(compatibility[secondLayer]),
+  });
 
-      const firstLayer = firstLayerChoice;
-      indexOfFirstLayer = layers[layersOrder].findIndex(layer => layer === firstLayer);
+  const secondTrait = await selectSecondTrait.run();
 
-      const selectFirstTrait = new Select({
-        name: 'trait',
-        message: 'Select the first (parent) trait:',
-        choices: Object.keys(compatibility[firstLayer]).concat('Go Back'),
-      });
-
-      firstTraitChoice = await selectFirstTrait.run();
-
-      if (firstTraitChoice === 'Go Back') {
-        continue;
-      }
-
-      break;
-    }
-
-    const firstTrait = firstTraitChoice;
-
-    while (true) {
-      const choicesForSecondLayer = layers[layersOrder].slice(indexOfFirstLayer + 1).map(layer => layer).concat('Go Back');
-
-      const selectSecondLayer = new Select({
-        name: 'layer',
-        message: 'Select the second (child) layer:',
-        choices: choicesForSecondLayer,
-      });
-
-      secondLayerChoice = await selectSecondLayer.run();
-
-      if (secondLayerChoice === 'Go Back') {
-        goBackToFirstLayer = true;
-        break;
-      }
-
-      const secondLayer = secondLayerChoice;
-      indexOfSecondLayer = layers[layersOrder].findIndex(layer => layer === secondLayer);
-
-      const selectSecondTraits = new MultiSelect({
-        name: 'traits',
-        message: 'Select incompatible traits (children) with space bar:',
-        choices: Object.keys(compatibility[secondLayer]).length === 1 
-        ? ['Selected layer only has one trait. If chosen, generation would fail. Press enter to go back'] 
-        : Object.keys(compatibility[secondLayer]).concat('Go Back'),
-      });
-
-      const selectSecondTrait = new Select({
-        name: 'trait',
-        message: 'Select the forced trait (child)',
-        choices: Object.keys(compatibility[secondLayer]).length === 1 
-        ? ['Selected layer only has one trait. If chosen, generation would fail. Press enter to go back'] 
-        : Object.keys(compatibility[secondLayer]).concat('Go Back'),
-      });
-
-      selectedTraits = forcedCombination ? [await selectSecondTrait.run()] :await selectSecondTraits.run();
-
-      if (selectedTraits.includes('Go Back')) {
-        goBackToFirstLayer = true;
-        break;
-      }
-
-      break;
-    }
-
-    if (goBackToFirstLayer) {
-      continue;
-    }
-
-    for (const secondTrait of selectedTraits) {
-      if (forcedCombination) {
-        await markForcedCombination(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
-      } else {
-        await markIncompatible(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
-      }
-    }
-
-    break;
+  if (forcedCombination) {
+    await markForcedCombination(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
+  } else {
+    await markIncompatible(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
   }
-};
+}
 
+//Re-create nested structures with incompatibilities taken into account
+let incompatibleNest = {};
+let compatibleNest = {};
 
-let layerIncompatibilities = {};
+const incompatibleNestedStructure = async () => {
+  const topLayers = [];
 
-let createLayerIncompatibilities = async () => {
   layers.forEach((layersOrder, index) => {
-    const restricted = Object.keys(incompatibilities);
-    layerIncompatibilities[index] = {};
-
-    layersOrder.forEach((layer, layerIndex) => {
-      layerIncompatibilities[index][layerIndex] = {};
-
+    let tempTopLayers = [];
+    layersOrder.forEach((layer) => {
       const traits = Object.keys(compatibility[layer]);
-      const restrictedTraits = {};
+      tempTopLayers.push(traits);
+    });
+    topLayers[index] = tempTopLayers;
+  });
 
-      if (restricted.length > 0) {
-        restricted.forEach((restrictedTrait) => {
-          let parentIndexes = Object.keys(incompatibilities[restrictedTrait]);
+  topLayers.forEach((layersOrder, index) => {
+    incompatibleNest[index] = {};
+    const lastLayerIndex = layersOrder.length - 1
+    
+    let previousLayer = {};
+    const restricted = Object.keys(incompatibilities);
+    // incompatible paths
+    restricted.forEach((restrictedTrait) => {
+      let parentIndexes = Object.keys(incompatibilities[restrictedTrait]).map((x) => Number(x));
 
-          if (traits.includes(restrictedTrait)) { // Create elements in restrictedTraits for any incompatible parents
-            parentIndexes.forEach((pIndex) => {
-              if (incompatibilities[restrictedTrait][pIndex].layerIndex == index) {
-                let incompatibleParents = incompatibilities[restrictedTrait][pIndex].incompatibleParents;
+      let compatibilityFlag = false;
+      let childIndex = incompatibilities[restrictedTrait][parentIndexes[0]].childIndex; 
 
-                incompatibleParents.forEach((incompatibleParent) => {
-                  if (!restrictedTraits[incompatibleParent]) {
-                    restrictedTraits[incompatibleParent] = traits.filter((trait) => trait != restrictedTrait);
-                  } else {
-                    restrictedTraits[incompatibleParent] = restrictedTraits[incompatibleParent].filter((trait) => trait != restrictedTrait);
-                  }
-                });
-
-                // Handle forced combinations
-                if (incompatibilities[restrictedTrait][pIndex].forced) {
-                  let forcedParents = incompatibilities[restrictedTrait][pIndex].parents;
-
-                  if (!restrictedTraits[forcedParents[0]]) {
-                    restrictedTraits[forcedParents[0]] = traits.filter((trait) => trait == restrictedTrait);
-                  } else {
-                    throw new Error(`Forced trait exists elsewhere. Please review your incompatibilities and try again. ` +
-                      `Forced combinations can ONLY work with one another. `
-                    )
-                  }
-                
-                }
-              }
-            });
-          } else { // Create elements in restrictedTraits for any incompatible children
-            parentIndexes.forEach((pIndex) => {
-              if (incompatibilities[restrictedTrait][pIndex].layerIndex == index) {
-                compatibleParents = incompatibilities[restrictedTrait][pIndex].parents;
-
-                if (incompatibilities[restrictedTrait][pIndex].parentIndex == layerIndex) {
-                  if (!restrictedTraits[restrictedTrait]) {
-                    restrictedTraits[restrictedTrait] = compatibleParents;
-                  } else {
-                    throw new Error(`Incompatibility error: ${restrictedTrait} is incompatible with ${compatibleParents} ` + 
-                      `in layer ${layerIndex}, but ${restrictedTrait} is not a trait in layer ${layerIndex}. ` +
-                      `Please review your incompatibilities and try again. If you need help, please send details to @datboi`);
-                  }
-                }
-              }
+      for ( let i = lastLayerIndex; i >= 0; i--) {
+        if (i == lastLayerIndex) { // Last layer
+          let endOfNest = {};
+          if (i == childIndex) {
+            endOfNest[restrictedTrait] = {};
+            compatibilityFlag = true;
+          } else {
+            layersOrder[i].forEach((trait) => {
+              endOfNest[trait] = {};
             });
           }
-        });
+          previousLayer = endOfNest;
+        } else { // Everything else
+          let lStruct = {};
+          if (i == childIndex) {
+            lStruct[restrictedTrait] = previousLayer;
+            compatibilityFlag = true;
+          } else if (parentIndexes.includes(i) && compatibilityFlag) { 
+            let parents = incompatibilities[restrictedTrait][i].parents;
+            parents.forEach((trait) => {
+              lStruct[trait] = previousLayer;
+            });
+            previousLayer = lStruct;
+          } else {
+            layersOrder[i].forEach((trait) => {
+              lStruct[trait] = previousLayer;
+            });
+            previousLayer = lStruct;
+          }
+          previousLayer = lStruct;
+        }
+        incompatibleNest[index][restrictedTrait] = previousLayer;
       }
-
-      layerIncompatibilities[index][layerIndex].traits = traits;
-      layerIncompatibilities[index][layerIndex].restrictedTraits = restrictedTraits;
     });
   });
 }
 
-const updateIncompatibleCounts = () => {
+const compatibleNestedStructure = async => {
   const topLayers = [];
   let layerCounts = {};
 
@@ -454,6 +383,8 @@ const updateIncompatibleCounts = () => {
 
   topLayers.forEach((layersOrder, index) => {
     const lastLayerIndex = layersOrder.length - 1
+    
+    let previousLayer = {};
 
     // Add all paths excluding incompatibilities
     for ( let i = lastLayerIndex; i >= 0; i--) {
@@ -472,57 +403,56 @@ const updateIncompatibleCounts = () => {
           }
         });
       }
-      
+
       if (i == lastLayerIndex) { // Last layer
+        let endOfNest = {};
         layersOrder[i].forEach((trait) => {
-          if (restricted.includes(trait)) {
+          if (!restricted.includes(trait)) {
+            endOfNest[trait] = {};
+          } else {
             let previousLayerCount = 1;
             
             for (let j = 0; j < i; j++) {
-              let previousLayerName = layers[index][j];
-              previousLayerCount *= layerCounts[index][previousLayerName];
+              let previousLayer = layers[index][j]
+              previousLayerCount *= layerCounts[index][previousLayer];
             }
             traitCounts[index][layers[index][i]][trait] -= previousLayerCount;
-            if(traitCounts[index][layers[index][i]][trait] <= 0) {
-              throw new Error(`Incompatibility error: This is a HYPER specific issue that boils down to the math being a little weird. ` +
-              `The simplest solution, for now, is to add another layer to layer configuration ${index} with 2+ blank pngs. You can use the exclude ` +
-              `option so it doesn't appear in the final metadata. If you need help, please send details to @datboi`);
-            }
             maxCombinations -= previousLayerCount;
           }
         });
+        previousLayer = endOfNest;
       } else { // Everything else
+        let lStruct = {}
         layersOrder[i].forEach((trait) => {
-          if (restricted.includes(trait)) {
+          if (!restricted.includes(trait)) {
+            lStruct[trait] = previousLayer;
+          } else {
             let previousLayerCount = 1;
             
             for (let j = 0; j < i; j++) {
-              let previousLayerName = layers[index][j];
-              previousLayerCount *= layerCounts[index][previousLayerName];
+              let previousLayer = layers[index][j]
+              previousLayerCount *= layerCounts[index][previousLayer];
             }
             traitCounts[index][layers[index][i]][trait] -= previousLayerCount;
-            if(traitCounts[index][layers[index][i]][trait] <= 0) {
-              throw new Error(`Incompatibility error: This is a HYPER specific issue that boils down to the math being a little weird. ` +
-              `The simplest solution, for now, is to add another layer to layer configuration ${index} with 2+ blank pngs. You can use the exclude ` +
-              `option so it doesn't appear in the final metadata. If you need help, please send details to @datboi`);
-            }
             maxCombinations -= previousLayerCount;
           }
         });
+        previousLayer = lStruct;
       }
+      compatibleNest[index] = previousLayer;
     }
 
   });
 }
 
 const countAndSave = () => {
-  updateIncompatibleCounts();
-  createLayerIncompatibilities();
+  incompatibleNestedStructure();
+  compatibleNestedStructure();
  
   console.log(`With the defined incompatibilites and available traits, `+
     `a maximum of ${maxCombinations} images can be generated`);
 
-  // Save compatibility objects as JSON
+  // // Save compatibility objects as JSON
   // const ijsonOutput = JSON.stringify(incompatibleNest, null, 2);
   // const ioutputFile = path.join(basePath, 'compatibility/incompatibleNest.json');
   // fs.writeFileSync(ioutputFile, ijsonOutput);
@@ -533,27 +463,11 @@ const countAndSave = () => {
   // fs.writeFileSync(coutputFile, cjsonOutput);
 
   // Save compatibility objects as JSON
-  const ljsonOutput = JSON.stringify(layerIncompatibilities, null, 2);
-  const loutputFile = path.join(basePath, 'compatibility/layerIncompatibilities.json');
-  fs.writeFileSync(loutputFile, ljsonOutput);
-
-  // Save compatibility objects as JSON
   const jsonOutput = JSON.stringify(incompatibilities, null, 2);
   const outputFile = path.join(basePath, 'compatibility/incompatibilities.json');
   fs.writeFileSync(outputFile, jsonOutput);
 
   console.log(`Compatibility files created in ${outputFile}`);
-
-  // console.log(traitCounts);
 }
 
-module.exports = { 
-  listCompatibility, 
-  nestedStructure, 
-  markIncompatible, 
-  markForcedCombination, 
-  checkCompatibility, 
-  countAndSave, 
-  traitCounts, 
-  layerIncompatibilities,
-};
+module.exports = { listCompatibility, nestedStructure, markIncompatible, markForcedCombination, checkCompatibility, countAndSave, traitCounts, incompatibleNest,  compatibleNest};

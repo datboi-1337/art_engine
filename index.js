@@ -11,6 +11,7 @@ const {
   countAndSave 
 } = require(`${basePath}/modules/isCompatible.js`);
 const { startCreating, buildSetup, rarityBreakdown, createPNG } = require(`${basePath}/src/main.js`);
+const cliProgress = require('cli-progress');
 
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
 
@@ -56,9 +57,29 @@ const runScript = async () => {
   await listCompatibility();
   await nestedStructure();
 
-  if (Object.keys(incompatibilities).length > 0) {
-    console.log(incompatibilities);
+  let incompatibleChildren = Object.keys(incompatibilities);
 
+  if (incompatibleChildren.length > 0) {
+    incompatibleChildren.forEach((incompatibility) => {
+      let incompatibilityCount = 0;
+      let parentIndexes = Object.keys(incompatibilities[incompatibility]);
+      for (let i = 0; i < parentIndexes.length; i++) {
+        let tempIndex = parentIndexes[i];
+        let parents = incompatibilities[incompatibility][tempIndex].parents;
+        let incompatibleParents = incompatibilities[incompatibility][tempIndex].incompatibleParents;
+        incompatibilityCount += incompatibleParents.length;
+        if (incompatibilities[incompatibility][tempIndex].forced) {
+          console.log(`${parents[0]} will ONLY generate with ${incompatibility}`);
+        } else {
+          incompatibleParents.forEach((parent) => {
+            console.log(`${parent} will not generate with ${incompatibility}`);
+          });
+        }
+      }
+    });
+
+    console.log(`\n`);
+    
     const choices = [
       'Proceed to generation with existing incompatibilities',
       'Add additional incompatibilities',
@@ -78,6 +99,10 @@ const runScript = async () => {
 
     if (compatibilityOption === choices[0].name || compatibilityOption === choices[1].name) {
       let children = Object.keys(incompatibilities);
+      
+      // const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+      // progressBar.start(children.length, 0);
+
       for (let i = 0; i < children.length; i++) {
         // account for additional parent index in path
         let parentIndexes = Object.keys(incompatibilities[children[i]]);
@@ -88,7 +113,7 @@ const runScript = async () => {
           let forcedCombination = incompatibilities[children[i]][tempIndex].forced;
           for (let k = 0; k < incompatibleParents.length; k++) {
             if (!forcedCombination) {
-              console.log(`Marking Incompatibilities...`);
+              // console.log(`Marking Incompatibilities...`);
               await markIncompatible(
                 children[i],
                 incompatibilities[children[i]][tempIndex].incompatibleParents[k],
@@ -97,7 +122,7 @@ const runScript = async () => {
                 incompatibilities[children[i]][tempIndex].layerIndex
               );
             } else {
-              console.log(`Marking Forced Combinations...`);
+              // console.log(`Marking Forced Combinations...`);
               await markForcedCombination(
                 children[i],
                 incompatibilities[children[i]][tempIndex].parents[0],
@@ -108,7 +133,9 @@ const runScript = async () => {
             }
           }
         }
+        // progressBar.increment();
       }
+      // progressBar.stop();
     }
 
     if (compatibilityOption === choices[0].name) {
