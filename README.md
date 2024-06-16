@@ -5,18 +5,34 @@ This is a fork of Hashlip's art engine with several additional features and qual
 <br/>
 If you have any questions, please feel free to ask me in the various channels I can be reached (Discord will be the most consistent)
 <br/>
-<br/>
 
 
-## Relevant links / socials,
+## [Relevant links / socials](https://linktr.ee/datboi1337)
 
-[datboi](https://linktr.ee/datboi1337)
-
-<br/>
-<br/>
+---
 
 # Installation notes
 Use Node 18-20
+
+# General use
+0) (first time) run `npm install`
+1) Remove existing folders in `layers` folder, and replace with your layer folders
+2) Define `collectionSize` in config.js
+3) Define `network` in config.js (set to ETH by default, which should work for most EVM chains)
+4) Define general metadata (and solanaMetadata of generating for Solana)
+5) Update layerConfigurations in config.js. Be sure to define them in the order they are to be selected. First definition is the 'bottom' or 'back' of the image. 
+6) Run generation with `npm run generate`
+7) Follow prompts to define any incompatibilities or forced combinations
+8) Review metadata once it's been generated, and follow the prompts to generate images if metadata is generated to your specification. 
+
+### Planned upcoming features coming soon
+
+[Track current progress and see upcoming features on the project's Trello board](https://trello.com/b/PsInWbHr/datlips-art-engine)
+
+- GIF generation 👀
+- Image/Metadata IPFS upload
+- Adding terminal interaction for most metadata manipulation utilities to avoid direct script editing
+
 
 # Enhanced Features in this fork
 ---
@@ -93,25 +109,7 @@ Use Node 18-20
 - [recreateAndSortMetadata](#recreateandsortmetadata)
 - [rarityFromMetadata](#rarityfrommetadata)
 
-### Planned upcoming features coming soon
-
-[Track current progress and see upcoming features on the project's Trello board](https://trello.com/b/PsInWbHr/datlips-art-engine)
-
-- GIF generation 👀
-- Image/Metadata IPFS upload
-- Adding terminal interaction for most metadata manipulation utilities to avoid direct script editing
-
-
-# General use
-0) (first time) run `npm install`
-1) Import layer files
-2) Define collectionSize in config.js
-3) Define network in config.js
-4) Define general metadata (and solanaMetadata of generating for Solana)
-5) Update layerConfigurations in config.js. Be sure to define them in the order they are to be selected. First definition is the 'bottom' or 'back' of the image. 
-6) Run generation with `npm run generate`
-7) Follow prompts to define any incompatibilities or forced combinations
-8) Review metadata once it's been generated, and follow the prompts to generate images if metadata is generated to your specification. 
+---
 
 # Split metadata and image generation
 All metadata will be generated immediately upon running `npm run generate`. This allows generation to happen much faster, and provides a trait breakdown in the terminal upon completion, with a prompt to continue to photo generation. Any issues with metadata/compatibility can be seen and rectified much faster, then when all is well, image generation can take place. 
@@ -121,9 +119,10 @@ All metadata will be generated immediately upon running `npm run generate`. This
 
 # Compatibility Wizard
 You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
+**NOTE:** Most interactions will include a 'Go Back' option, which should allow you to re-select the previous selection or start over. 
 
 # Incompatibility example
-With the default layers in this fork, we can define the following incompatibility (arbitraily chosen for demonstration): `Eyes/EyeScar` is not compatible with `Back/StrapOnShark` and `Back/SharkFin`. We can tell the engine not to generate those items together like so:
+With the default layers in this fork, we can define the following incompatibilities (arbitraily chosen for demonstration): `Back/StrapOnShark` (parent) is not compatible with `Eyes/EyeScar` and `Eyes/TurtleEyes`. We can tell the engine not to generate those items together like so:
 <br/>
 
 1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
@@ -138,43 +137,84 @@ With the default layers in this fork, we can define the following incompatibilit
 ![incompatibility5](media/incompatibility_prompt_5.png)
 6) Select the layer your *children* traits are located
 ![incompatibility6](media/incompatibility_prompt_6.png)
-7) Select the children trait(s)
+7) Select the children trait(s), using the space bar to select traits, and enter to confirm
 ![incompatibility7](media/incompatibility_prompt_7.png)
 8) Engine will mark incompatitbilities and prompt you to enter any other incompatibilities or forced combinations.
 ![incompatibility8](media/incompatibility_prompt_8.png)
 
 # Forced combination example
-We can define the following forced combination (again, arbitraily chosen for demonstration): Arms/FinArms must only ever generate with Legs/FinLegs. We can tell the engine to always generate those items together like so:
+We can define the following forced combination (again, arbitraily chosen for demonstration): `Arms/FinArms` must only ever generate with `Legs/FinLegs`. We can tell the engine to always generate those items together like so:
 <br/>
 
 1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
 ![incompatibility1](media/incompatibility_prompt_1.png)
 2) Select Forced Combination
 ![incompatibility2](media/forcedCombination_prompt_2.png)
-3) Select layer configuration index (if applicable)
+3) Select layer configuration index (only applicable if multiple layer configurations are defined in config.js)
 ![incompatibility3](media/forcedCombination_prompt_3.png)
-4) Select the layer your *first* trait is located in 
+4) Select the layer your *parent* trait is located in 
 ![incompatibility4](media/forcedCombination_prompt_4.png)
-5) Select the first trait
+5) Select the parent trait
 ![incompatibility5](media/forcedCombination_prompt_5.png)
-6) Select the layer your *second* trait is located in
+6) Select the layer your *child* trait is located in
 ![incompatibility6](media/forcedCombination_prompt_6.png)
-7) Select the second trait
+7) Select the child trait. **NOTE:** Forced combinations can only have one child trait, as these two traits will be linked and will not generate with ANY other traits. 
 ![incompatibility7](media/forcedCombination_prompt_7.png)
 8) Engine will mark forced and prompt you to enter any other incompatibilities or forced combinations.
 ![incompatibility8](media/forcedCombination_prompt_8.png)
 
-**NOTE**: Incompatibilities and forced combinations are not lost in cases where generation needs to be run again. If you've previously run the compatibility wizard or incompatibilities have been defined manually (see Advanced incompatibility below), you will be prompted to review existing incompatibilities, then asked to either proceed with generation, add more incompatibilities, or remove all incompatibilities to start fresh (you will be prompted to add incompatibilities again, if needed).
+**NOTE**: Incompatibilities and forced combinations are not lost in cases where generation needs to be run again. If you've previously run the compatibility wizard or incompatibilities have been defined manually (see Advanced incompatibility below), you will be prompted to review existing incompatibility counts, then asked to either proceed with generation, add more incompatibilities, or remove all incompatibilities to start fresh (you will be prompted to add incompatibilities again, if needed).
 
 ![incompatibility9](media/incompatibility_prompt_9_existing.png)
 
 # Advanced compatibility
-If you need to define multiple incompatibilities/forced combinations, and you don't want to use the wizard, you *can* define them manually by editing compatibility/compatibility.json, adding an object like the example below. 
+If you need to define multiple incompatibilities/forced combinations, and you don't want to use the wizard, you *can* define them manually by editing compatibility/compatibility.json, adding an object like the example below defining all the incompatibilities and forced combinations from above. 
 **NOTE** This should really only be used by advanced users. If this is defined incorrectly, it's possible to experience generation issues.
+
 ```js
 {
-  "FinLegs": {  // child trait. second selected incompatible / forced trait
-    "1": { // parent index. There can be multiple, so it's defined as a key
+  "EyeScar": { // child trait. second selected incompatible / forced trait
+    "2": { // parent index. There can be multiple, so it's defined as a key
+      "incompatibleParents": [ // incompatible parents. 
+        "StrapOnShark"
+      ],
+      "parents": [             // compatible parents
+        "BetaFins",
+        "Blowhole",
+        "DolphinFin",
+        "DorsalFins",
+        "SharkFin",
+        "TurtleShell"
+      ],
+      "parentIndex": 2,        // layersOrder index of parent layer
+      "childIndex": 4,         // layersOrder index of child layer
+      "layerIndex": 0,         // layerConfiguration index
+      "maxCount": 0,           // This will be calculated later, should always be 0 by default
+      "forced": false          // false for incompatibility
+    }
+  },
+  "TurtleEyes": {
+    "2": {
+      "incompatibleParents": [
+        "StrapOnShark"
+      ],
+      "parents": [
+        "BetaFins",
+        "Blowhole",
+        "DolphinFin",
+        "DorsalFins",
+        "SharkFin",
+        "TurtleShell"
+      ],
+      "parentIndex": 2,
+      "childIndex": 4,
+      "layerIndex": 0,
+      "maxCount": 0,
+      "forced": false
+    }
+  },
+  "FinLegs": {
+    "1": {
       "incompatibleParents": [ // incompatible parents. in this scenario,
         "BetaArms",            // all but one are marked incompatible because 
         "FidlerClaws",         // this is a forced combination
@@ -184,14 +224,14 @@ If you need to define multiple incompatibilities/forced combinations, and you do
         "TentacleArms",
         "TurtleArms"
       ],
-      "parents": [ // compatible parents
+      "parents": [
         "FinArms"
       ],
-      "parentIndex": 1, // layersOrder index of parent layer
-      "childIndex": 6, // layersOrder index of child layer
-      "layerIndex": 0, // layerConfiguration index
-      "maxCount": 0, // This will be calculated later, should always be 0 by default
-      "forced": true // true for forced combinations, false for incompatibility
+      "parentIndex": 1,
+      "childIndex": 6,
+      "layerIndex": 0,
+      "maxCount": 0,
+      "forced": true           // true for forced combinations
     }
   }
 }
@@ -231,9 +271,9 @@ You can view `rarity_config` in config.js to understand the differences between 
 This fork gives the option to use define exact counts of traits rather than using weight to randomly determine counts of traits. 
 
 ## Exact weight example
-To use exact weight system, set `exactWeight` to true in config.js. When this option is enabled, the weight of any given trait is set to will be the exact number of times that trait appears in the collection. ie: `trait#50.png` will appear exactly 50 times throughout the collection. <br/>
+To use exact weight system, set `exactWeight` to true in config.js. When this option is enabled, the weight of any given trait is set to will be the exact number of times that trait appears in the collection. ie: `trait#50.png` will appear exactly 50 times throughout the layer configuration it's found within. <br/>
 
-**PLEASE NOTE**: All weights in a given folder must add up to the layersOrder edition size! Traits with the same names across multiple layersOrders will be counted separately!
+**NOTE**: All weights in a given folder must add up to the layer configurations `growEditionSizeTo`! Traits with the same names across multiple layersOrders will be counted separately!
 
 ```js
 const exactWeight = true;
@@ -421,7 +461,7 @@ The generated trait in the example above will add a trait like this to the metad
 ```
 
 # Extra attributes
-Allows adding extra *attributes* to the metadata. `extraMetadata` is restricted to only adding things outside the attribute. This functionality allows adding extra information to the attributes so they can be displayed in marketplaces. <br/>
+Allows adding extra *attributes* to the metadata. `extraMetadata` is restricted to only adding things outside the attributes array. This functionality allows adding extra information to the attributes array so they can be displayed in marketplace traits sections. <br/>
 
 **NOTE**: This will add the *same* information to each NFT's metadata. 
 
