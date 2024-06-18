@@ -122,7 +122,7 @@ You will be prompted in the terminal for any incompatibilities in your collectio
 **NOTE:** Most interactions will include a 'Go Back' option, which should allow you to re-select the previous selection or start over. 
 
 # Incompatibility example
-With the default layers in this fork, we can define the following incompatibilities (arbitraily chosen for demonstration): `Back/StrapOnShark` (parent) is not compatible with `Eyes/EyeScar` and `Eyes/TurtleEyes`. We can tell the engine not to generate those items together like so:
+With the default layers in this fork, we can define the following incompatibilities (arbitraily chosen for demonstration): `Back/StrapOnShark` (parent) is not compatible with `Eyes/EyeScar` and `Eyes/TurtleEyes` (children). We can tell the engine not to generate those items together like so:
 <br/>
 
 1) When running `npm run generate`, you will be prompted whether you want to input any incompatible layers. 
@@ -158,7 +158,7 @@ We can define the following forced combination (again, arbitraily chosen for dem
 ![incompatibility5](media/forcedCombination_prompt_5.png)
 6) Select the layer your *child* trait is located in
 ![incompatibility6](media/forcedCombination_prompt_6.png)
-7) Select the child trait. **NOTE:** Forced combinations can only have one child trait, as these two traits will be linked and will not generate with ANY other traits. 
+7) Select the child trait. **NOTE:** Forced combinations can only have one child trait, as these two traits will be linked and will not generate with ANY other traits from those layers. 
 ![incompatibility7](media/forcedCombination_prompt_7.png)
 8) Engine will mark forced and prompt you to enter any other incompatibilities or forced combinations.
 ![incompatibility8](media/forcedCombination_prompt_8.png)
