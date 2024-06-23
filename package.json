@@ -18,7 +18,7 @@
     "rarity": "node utils/rarityFromMetadata.js",
     "preview": "node utils/preview.js",
     "pixelate": "node utils/pixelate.js",
-    "update_info": "node utils/update_info.js",
+    "update": "node utils/update_info.js",
     "preview_gif": "node utils/preview_gif.js",
     "generate_metadata": "node utils/generate_metadata.js",
     "clean": "node utils/cleanMetadata.js",
@@ -31,6 +31,7 @@
     "canvas": "^2.8.0",
     "cli-progress": "^3.12.0",
     "enquirer": "^2.4.1",
+    "fs-extra": "^11.2.0",
     "gif-encoder-2": "^1.0.5",
     "sha1": "^1.1.1"
   }

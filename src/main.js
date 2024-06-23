@@ -15,6 +15,7 @@ const {
   rarityDelimiter,
   zindexDelimiter,
   shuffleLayerConfigurations,
+  excludeFromMetadata,
   debugLogs,
   extraMetadata,
   text,
@@ -481,6 +482,8 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       throw new Error(`${selectedElement.name} missing from DNA. This error should not happen anymore. Please send @datboi details`);
     }
 
+    const excludedTrait = excludeFromMetadata.includes(selectedElement.name);
+
     return {
       name: layer.name,
       blend: layer.blend,
@@ -489,7 +492,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       ogName: layer.ogName,
       zindex: selectedElement.zindex,
       subTraits: selectedSubTraits,
-      exclude: layer.exclude,
+      exclude: layer.exclude || excludedTrait ? true : false,
     };
   });
   return mappedDnaToLayers;

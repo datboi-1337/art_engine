@@ -4,11 +4,10 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 
 const collectionSize = 65;
 
-// ********* Advanced weight options *********
 /* 
 * Set this to true if you want to use EXACT weights. 
 * Note that your weights must add up to the total number
-* you want of that trait.
+* you want of that trait in the particular layer configuration it's in.
 */
 const exactWeight = false;
 
@@ -16,7 +15,7 @@ const exactWeight = false;
 // NOTE: using 'eth' will generate metadata compatible with most EVM chains
 const network = NETWORK.eth;
 
-// General metadata
+// General metadata. collectionName and description can be unique to each layer configuration if desired
 const collectionName = "Your Collection";
 const symbol = "YC";
 const description = "Remember to replace this description";
@@ -39,6 +38,9 @@ const solanaMetadata = {
 
 // It's suggested to keep shuffle enabled to avoid the same traits generating for spans of images
 const shuffleLayerConfigurations = false;
+
+// Populate with TRAITS you want to exclude from metadata. "None" is the default value, remove if you want "None" to appear in final metadata
+const excludeFromMetadata = ["None"];
 
 const layerConfigurations = [
   {
@@ -266,6 +268,7 @@ module.exports = {
   zindexDelimiter,
   preview,
   shuffleLayerConfigurations,
+  excludeFromMetadata,
   debugLogs,
   extraMetadata,
   pixelFormat,
