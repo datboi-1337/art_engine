@@ -26,7 +26,7 @@ data.forEach((item) => {
 });
 
 data.forEach((item) => {
-  fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
+  fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(item, null, 2));
 
   let csvRow = {};
 
