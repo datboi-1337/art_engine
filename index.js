@@ -119,7 +119,8 @@ const runScript = async () => {
                 incompatibilities[children[i]][tempIndex].incompatibleParents[k],
                 incompatibilities[children[i]][tempIndex].parentIndex,
                 incompatibilities[children[i]][tempIndex].childIndex,
-                incompatibilities[children[i]][tempIndex].layerIndex
+                incompatibilities[children[i]][tempIndex].layerIndex,
+                incompatibilities[children[i]][tempIndex].universal
               );
             } else {
               // console.log(`Marking Forced Combinations...`);
@@ -128,7 +129,8 @@ const runScript = async () => {
                 incompatibilities[children[i]][tempIndex].parents[0],
                 incompatibilities[children[i]][tempIndex].parentIndex,
                 incompatibilities[children[i]][tempIndex].childIndex,
-                incompatibilities[children[i]][tempIndex].layerIndex
+                incompatibilities[children[i]][tempIndex].layerIndex,
+                incompatibilities[children[i]][tempIndex].universal
               );
             }
           }

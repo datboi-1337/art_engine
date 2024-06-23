@@ -151,7 +151,7 @@ const nestedStructure = async () => {
 
 const incompatibilities = {};
 
-const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _childIndex, _layerIndex) => {
+const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _childIndex, _layerIndex, _universal) => {
   let incompatibleParents;
 
   if (!incompatibilities[_child]) {
@@ -183,7 +183,8 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
     childIndex: _childIndex,
     layerIndex: Number(_layerIndex),
     maxCount: 0,
-    forced: false
+    forced: false,
+    universal: _universal
   }
 
   // Log each incompatibility as it's own object for use in generation later
@@ -203,7 +204,7 @@ const markIncompatible = async (_child, _incompatibleParent, _parentIndex, _chil
   // console.log(`${_incompatibleParent} marked incompatible with ${_child}`);
 }
 
-const markForcedCombination = async (_child, _forcedParent, _parentIndex, _childIndex, _layerIndex) => {
+const markForcedCombination = async (_child, _forcedParent, _parentIndex, _childIndex, _layerIndex, _universal) => {
   let incompatibleParents = [];
 
   if (!incompatibilities[_child]) {
@@ -226,7 +227,8 @@ const markForcedCombination = async (_child, _forcedParent, _parentIndex, _child
     childIndex: _childIndex,
     layerIndex: Number(_layerIndex),
     maxCount: 0,
-    forced: true
+    forced: true,
+    universal: _universal
   }
 
   // Log each forced combination as incompatibility as it's own object for use in generation later
@@ -266,6 +268,7 @@ const checkCompatibility = async () => {
   let selectedTraits;
   let indexOfFirstLayer;
   let indexOfSecondLayer;
+  let selectedUniversal;
 
   while (true) {
     let goBackToFirstLayer = false;
@@ -352,11 +355,27 @@ const checkCompatibility = async () => {
       continue;
     }
 
+    let universal = false;
+
+    if (Object.keys(nest).length > 1) {
+      const selectUniversal = new Select({
+        name: 'Universal?',
+        message: 'Are these incompatibilities/forced combination universal across all layer configurations?',
+        choices: ['Yes', 'No'],
+      });
+  
+      selectedUniversal = await selectUniversal.run();
+
+      if (selectedUniversal === 'Yes') {
+        universal = true;
+      } 
+    }
+
     for (const secondTrait of selectedTraits) {
       if (forcedCombination) {
-        await markForcedCombination(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
+        await markForcedCombination(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder, universal);
       } else {
-        await markIncompatible(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder);
+        await markIncompatible(secondTrait, firstTrait, indexOfFirstLayer, indexOfSecondLayer, layersOrder, universal);
       }
     }
 
@@ -384,7 +403,7 @@ let createLayerIncompatibilities = async () => {
 
           if (traits.includes(restrictedTrait)) { // Create elements in restrictedTraits for any incompatible parents
             parentIndexes.forEach((pIndex) => {
-              if (incompatibilities[restrictedTrait][pIndex].layerIndex == index) {
+              if (incompatibilities[restrictedTrait][pIndex].layerIndex == index || incompatibilities[restrictedTrait][pIndex].universal) {
                 let incompatibleParents = incompatibilities[restrictedTrait][pIndex].incompatibleParents;
 
                 incompatibleParents.forEach((incompatibleParent) => {
@@ -412,10 +431,11 @@ let createLayerIncompatibilities = async () => {
             });
           } else { // Create elements in restrictedTraits for any incompatible children
             parentIndexes.forEach((pIndex) => {
-              if (incompatibilities[restrictedTrait][pIndex].layerIndex == index) {
+              if (incompatibilities[restrictedTrait][pIndex].layerIndex == index || incompatibilities[restrictedTrait][pIndex].universal) {
                 compatibleParents = incompatibilities[restrictedTrait][pIndex].parents;
 
                 if (incompatibilities[restrictedTrait][pIndex].parentIndex == layerIndex) {
+                  // @Ricky, does this cause issues with universal flag?
                   if (!restrictedTraits[restrictedTrait]) {
                     restrictedTraits[restrictedTrait] = compatibleParents;
                   } else {
