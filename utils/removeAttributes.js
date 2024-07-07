@@ -12,6 +12,9 @@ let removeTraitType = [ "Head" ] //Enter a Traits you want to remove here. (ie: 
 
 // Keep backup directory clean by deleting oldest backup if more than 10 exist
 let backupDir = `${basePath}/backup`;
+if (!fs.existsSync(backupDir)) {
+  fs.mkdirSync(backupDir, { recursive: true });
+}
 let backupFolders = fs.readdirSync(backupDir);
 
 if (backupFolders.length > 10) {

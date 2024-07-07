@@ -14,6 +14,9 @@ let traitTypeAfter = [ "Hat", "Skin" ] //Enter new trait_trypes here
 
 // Keep backup directory clean by deleting oldest backup if more than 10 exist
 let backupDir = `${basePath}/backup`;
+if (!fs.existsSync(backupDir)) {
+  fs.mkdirSync(backupDir, { recursive: true });
+}
 let backupFolders = fs.readdirSync(backupDir);
 
 if (backupFolders.length > 10) {
@@ -112,4 +115,5 @@ for (let i = 0; i < traitTypeBefore.length; i++) {
   console.log(`Updated ${traitTypeBefore[i]} to ${traitTypeAfter[i]}`);
 }
 
-console.log(`Updated metadata saved in ${basePath}/build/json`)
+console.log(`Updated metadata saved in ${basePath}/build/json`);
+console.log(`Unmodified backup saved in ${destinationDir}`);

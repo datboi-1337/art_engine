@@ -151,3 +151,5 @@ dist
 /build
 package-lock.json
 /backup
+/cache
+/archive

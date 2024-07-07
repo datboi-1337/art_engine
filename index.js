@@ -152,7 +152,7 @@ const runScript = async () => {
 
   countAndSave();
 
-  buildSetup();
+  await buildSetup();
   await startCreating();
   await rarityBreakdown();
 
