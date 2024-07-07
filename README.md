@@ -101,13 +101,22 @@ Use Node 18-20
 - [set growEditionSizeTo per layer configuration, instead of cumulatively](#non-cumulative-growEditionSizeTo)
   - [growEditionSizeTo example](#growEditionSizeTo-example)
 
+## Backup, Cache, Archive, & Restore
+- [Generation, edits, and past collections can all be saved and restored](#restoration-system)
+  -[Restore examples](#restore-example)
+
+## Exclude traits from metadata
+- [Define any traits that should not be included in metadata](#exclude-traits-from-metadata)
+
 ## Utils
+- [archiveCollection](#archiveCollection)
 - [cleanMetadata](#cleanmetadata)
 - [removeAttributes](#removeattributes)
 - [renameAttributes](#renameattributes)
 - [generateOldDna](#generateolddna)
 - [recreateAndSortMetadata](#recreateandsortmetadata)
 - [rarityFromMetadata](#rarityfrommetadata)
+- [createOpenseaCSV](#create-opensea-csv)
 
 ---
 
@@ -129,7 +138,7 @@ With the default layers in this fork, we can define the following incompatibilit
 ![incompatibility1](media/incompatibility_prompt_1.png)
 2) Select Incompatibility
 ![incompatibility2](media/incompatibility_prompt_2.png)
-3) Select layer configuration index (only applicable if multiple layer configurations are defined in config.js)
+3) Select layer configuration index (only applicable if multiple layer configurations are defined in config.js). If incompatibility applies to all layers, select the first layer configuration. You will be prompted later to apply incompatibility to all layers if needed. 
 ![incompatibility3](media/incompatibility_prompt_3.png)
 4) Select the layer your *parent* trait is located in 
 ![incompatibility4](media/incompatibility_prompt_4.png)
@@ -139,8 +148,10 @@ With the default layers in this fork, we can define the following incompatibilit
 ![incompatibility6](media/incompatibility_prompt_6.png)
 7) Select the children trait(s), using the space bar to select traits, and enter to confirm
 ![incompatibility7](media/incompatibility_prompt_7.png)
+8) Dictate whether defined incompatibility should be universal (applied to ALL layer configurations)
+![incompatibility7](media/incompatibility_prompt_8_universal.png)
 8) Engine will mark incompatitbilities and prompt you to enter any other incompatibilities or forced combinations.
-![incompatibility8](media/incompatibility_prompt_8.png)
+![incompatibility8](media/incompatibility_prompt_10.png)
 
 # Forced combination example
 We can define the following forced combination (again, arbitraily chosen for demonstration): `Arms/FinArms` must only ever generate with `Legs/FinLegs`. We can tell the engine to always generate those items together like so:
@@ -551,7 +562,48 @@ const layerConfigurations = [
   },
 ];
 ```
+
+## Restoration System
+Certain actions taken in standalone scripts will save backups to ensure restoration in cases where mistakes were made or generation needs to be re-run. 
+
+When running main generation, your most recent 10 runs will be saved in the 'cache' folder. 
+
+When running rename/remove attribute scripts, the original data will be saved in the 'backup' folder, while any edits being made will be applied to the files in the build folder. 
+
+When running the archive script, your layers and src folder will be saved in the 'archive' folder. 
+
+Any of this data can be easily recovered by running `npm run restore` and following the prompts. 
+
+## Restore example
+When rurnning `npm run restore`, you will be prompted to restore from backup, cache, or archive. 
+![restorationExample](media/restoration_prompt_1.png)
+
+After making a selection, you will be prompted for which backup/cache/archive to restore. 
+
+When cache is selected, the cached _imgData will be restored, and all metadata files will be re-created. To generate new images, please run `npm run generate_photos`. 
+
+When backup is selected, any changes made will be reverted, and data from the selected backup will be present in build folder. 
+
+When archive is selected, the layers and src folder will be populated with data from the selected archive. 
+
+## Exclude traits from metadata
+Define any traits that should not appear in the final metadata by writing their clean name (**READ** name without Z-index, weight, or file extenstion) in the `excludeFromMetadata` array in config.js
+
+```js
+const excludeFromMetadata = ["None"];
+```
+
+Traits defined here will still generate any associated images, but will not appear in the final metadata. 
+
 # Utils
+
+## archiveCollection
+The archive system is meant to enable saving whole collection setups. This is useful in cases where you're generating multiple collections, and may need to re-visit something down the line. Running `npm run archive` will prompt you to enter a folder name where the contents of the 'layers' and 'src' folders will be copied, and defaults are restored in the main directory. 
+
+## createOpenseaCSV
+This is a standalone script that will create Opensea studio compatible metadata from just the _metadata.json file in the build/json folder. This shouldn't be necessary if generated using the datlips engine, as Opensea studio metadata is already generated in the 'opensea-drop' folder during normal generation. This is useful as a standalone script for collections that may have been generated using a different engine. 
+
+**NOTE** _metadata.json file must be present. 
 
 ## cleanMetadata
 This utility gives the option to remove some commonly requested items. Set any to true to remove them from generated metadata. Original metadata is preserved, and clean metadata is saved to build_new/json <br/>
@@ -572,6 +624,8 @@ This utility gives the ability to remove any attributes either by trait_type or 
 let removeValue = [ "None", "Test" ] //Enter values you want to remove here. (ie: "None")
 let removeTraitType = [ "Head" ] //Enter a Traits you want to remove here. (ie: "Head")
 ```
+
+**NOTE**: This should be handled in most cases by using the `excludeFromMetadata` array in config.js.
 
 
 ## renameAttributes
