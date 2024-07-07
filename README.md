@@ -201,7 +201,8 @@ If you need to define multiple incompatibilities/forced combinations, and you do
       "childIndex": 4,         // layersOrder index of child layer
       "layerIndex": 0,         // layerConfiguration index
       "maxCount": 0,           // This will be calculated later, should always be 0 by default
-      "forced": false          // false for incompatibility
+      "forced": false,         // false for incompatibility
+      "universal": false       // false because it does not apply to all layer configurations
     }
   },
   "TurtleEyes": {
@@ -221,7 +222,8 @@ If you need to define multiple incompatibilities/forced combinations, and you do
       "childIndex": 4,
       "layerIndex": 0,
       "maxCount": 0,
-      "forced": false
+      "forced": false,
+      "universal": false
     }
   },
   "FinLegs": {
@@ -242,7 +244,8 @@ If you need to define multiple incompatibilities/forced combinations, and you do
       "childIndex": 6,
       "layerIndex": 0,
       "maxCount": 0,
-      "forced": true           // true for forced combinations
+      "forced": true,          // true for forced combinations
+      "universal": false
     }
   }
 }
