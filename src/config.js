@@ -2,7 +2,7 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-const collectionSize = 65;
+const collectionSize = 30;
 
 /* 
 * Set this to true if you want to use EXACT weights. 
@@ -43,61 +43,79 @@ const shuffleLayerConfigurations = false;
 const excludeFromMetadata = ["None"];
 
 const layerConfigurations = [
+  // {
+  //   // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
+  //   growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
+  //   namePrefix: collectionName,
+  //   description: description,
+  //   layersOrder: [
+  //     { name: "Variant", options: { displayName: "Color" } }, 
+  //     { name: "Arms" },
+  //     { name: "Back" },
+  //     { name: "Body", 
+  //       options: {
+  //         subTraits: [
+  //           {
+  //           blend: MODE.multiply,
+  //           opacity: 0.5,
+  //           zindex: 25,
+  //           }
+  //         ],
+  //         conditionalOn: [ "Arms", "Back" ],
+  //       } 
+  //     },
+  //     { name: "Eyes",
+  //       options: {
+  //         subTraits: [
+  //           {
+  //           name: "Shadow",
+  //           blend: MODE.multiply,
+  //           opacity: 0.5,
+  //           zindex: 35,
+  //           }
+  //         ]
+  //       } 
+  //     },
+  //     { name: "Head" },
+  //     { name: "Legs" },
+  //     { name: "Mouth" },
+  //   ],
+  // },
+  // {
+  //   growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
+  //   namePrefix: `Skeletal ${collectionName}`,
+  //   description: 'Alternate Description for this set of tokens',
+  //   layersOrder: [
+  //     { name: "SkeletalArms", options: { exclude: true } },
+  //     { name: "SkeletalBack" }, 
+  //     { name: "SkeletalBody" }, 
+  //     { name: "SkeletalLegs" }, 
+  //     { name: "SkeletalAccessories", 
+  //       options: {
+  //         subTraits: [
+  //           {
+  //           zindex: 35,
+  //           }
+  //         ]
+  //       } 
+  //     }
+  //   ],
+  // },
   {
-    // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
-    growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
+    growEditionSizeTo: collectionSize, // This will generate 15 images with this layersOrder
     namePrefix: collectionName,
     description: description,
     layersOrder: [
-      { name: "Variant", options: { displayName: "Color" } }, 
-      { name: "Arms" },
-      { name: "Back" },
-      { name: "Body", 
-        options: {
-          subTraits: [
-            {
-            blend: MODE.multiply,
-            opacity: 0.5,
-            zindex: 25,
-            }
-          ]
-        } 
-      },
-      { name: "Eyes",
-        options: {
-          subTraits: [
-            {
-            name: "Shadow",
-            blend: MODE.multiply,
-            opacity: 0.5,
-            zindex: 35,
-            }
-          ]
-        } 
-      },
-      { name: "Head" },
-      { name: "Legs" },
-      { name: "Mouth" },
-    ],
-  },
-  {
-    growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
-    namePrefix: `Skeletal ${collectionName}`,
-    description: 'Alternate Description for this set of tokens',
-    layersOrder: [
-      { name: "SkeletalArms", options: { exclude: true } },
-      { name: "SkeletalBack" }, 
-      { name: "SkeletalBody" }, 
-      { name: "SkeletalLegs" }, 
-      { name: "SkeletalAccessories", 
-        options: {
-          subTraits: [
-            {
-            zindex: 35,
-            }
-          ]
-        } 
-      }
+      { name: "Background"},
+      { name: "Skin" }, 
+      { name: "Outfit", options: {
+        conditionalOn: [ "Skin" ],
+      } }, 
+      { name: "Face" }, 
+      { name: "Hair" },
+      { name: "Action", options: {
+        conditionalOn: [ "Skin", "Outfit" ],
+      } },
     ],
   },
 ];
@@ -107,6 +125,14 @@ const format = {
   height: 512,
   dpi: 72,
   smoothing: false,
+};
+
+const gif = {
+  generate: false,
+  numberOfFrames: 60,
+  repeat: 0,
+  quality: 100,
+  delay: 500,
 };
 
 const extraMetadata = {};
@@ -176,13 +202,6 @@ const statBlocks = [
 ];
 
 const debugLogs = false;
-
-const gif = {
-  export: false,
-  repeat: 0,
-  quality: 100,
-  delay: 500,
-};
 
 // Currently disabled
 const text = {

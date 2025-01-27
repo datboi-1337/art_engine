@@ -10,7 +10,8 @@ const {
   checkCompatibility, 
   countAndSave 
 } = require(`${basePath}/modules/isCompatible.js`);
-const { startCreating, buildSetup, rarityBreakdown, createPNG } = require(`${basePath}/src/main.js`);
+const { startCreating, buildSetup, rarityBreakdown, createPNG, createGIF } = require(`${basePath}/src/main.js`);
+const { gif } = require(`${basePath}/src/config.js`);
 const cliProgress = require('cli-progress');
 
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
@@ -165,7 +166,7 @@ const runScript = async () => {
   const answer = await selectProceed.run();
 
   if (answer === 'Proceed with image generation') {
-    await createPNG();
+    gif.generate ? await createGIF() : await createPNG();
   } else {
     console.log('Process aborted.');
     process.exit(0);

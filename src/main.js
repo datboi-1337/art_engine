@@ -4,6 +4,7 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const fs = require('fs-extra');
 const sha1 = require(`${basePath}/node_modules/sha1`);
 const { createCanvas, loadImage } = require(`${basePath}/node_modules/canvas`);
+const GIFEncoder = require(`${basePath}/node_modules/gif-encoder-2`);
 const buildDir = `${basePath}/build`;
 const layersDir = `${basePath}/layers`;
 const {
@@ -100,9 +101,7 @@ const buildSetup = async () => {
     fs.mkdirSync(`${buildDir}/opensea-drop/json`);
     fs.mkdirSync(`${buildDir}/images`);
   }
-  if (gif.export) {
-    fs.mkdirSync(`${buildDir}/gifs`);
-  }
+
   if (importOldDna) {
     let rawdata = fs.readFileSync(oldDna);
     let data = JSON.parse(rawdata);
@@ -130,11 +129,21 @@ function cleanDna(_str) {
 }
 
 const cleanName = (_str) => {
-  let nameWithoutExtension = _str.slice(0, -4);
+  let nameWithoutExtension = _str.includes(".")
+    ? _str.substring(0, _str.lastIndexOf("."))
+    : _str;
   let nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
   let nameWithoutZindex = nameWithoutWeight.split(zindexDelimiter).pop();
   return nameWithoutZindex;
 };
+
+const getFileExtension = (_str) => {
+  const lastDotIndex = _str.lastIndexOf(".");
+  return lastDotIndex > -1 && lastDotIndex < _str.length - 1
+    ? _str.substring(lastDotIndex)
+    : "";
+};
+
 
 const getZIndex = (_str) => {
   let zindex = Number(_str.split(zindexDelimiter).shift().slice(1));
@@ -185,6 +194,7 @@ const getElements = (path, _zindex) => {
         id: index,
         name: cleanName(i),
         filename: i,
+        fileExtension: getFileExtension(i),
         path: `${path}${i}`,
         weight: getRarityWeight(i),
         weightLocked: false,
@@ -230,7 +240,7 @@ const layersSetup = (layersOrder) => {
   return layers;
 };
 
-const saveImage = (_editionCount) => {
+const saveImageOLD = (_editionCount) => {
   fs.writeFileSync(
     `${buildDir}/images/${_editionCount}.png`,
     canvas.toBuffer("image/png", {
@@ -246,6 +256,37 @@ const saveImage = (_editionCount) => {
     );
   }
 };
+
+const saveImage = (_editionCount, format = "png", encoder = null) => {
+  const filePath = `${buildDir}/images/${_editionCount}.${format}`;
+  if (format === "png") {
+      fs.writeFileSync(
+          filePath,
+          canvas.toBuffer("image/png", {
+              resolution: format.dpi,
+          })
+      );
+      if (network == NETWORK.sol || network == NETWORK.sei) {
+        fs.writeFileSync(
+          filePath,
+          canvas.toBuffer("image/png", {
+            resolution: format.dpi,
+          }),
+        );
+      }
+  } else if (format === "gif" && encoder) {
+      const readStream = encoder.createReadStream();
+      const writeStream = fs.createWriteStream(filePath);
+      readStream.pipe(writeStream);
+      writeStream.on('error', (err) => {
+          console.error(`Error saving GIF ${_editionCount}:`, err);
+      });
+      writeStream.on('finish', () => {
+          console.log(`Saved GIF: ${_editionCount}`);
+      });
+  }
+};
+
 
 const genColor = () => {
   let hue = Math.floor(Math.random() * 360);
@@ -424,10 +465,12 @@ const checkVariant = (_variant, _traitObj) => {
   return tempObj;
 }
 
-const checkConditional = (_layer, _traitObj, _dna) => {
+const checkConditional = (_layer, _traitObj, _dna, _layersOrder) => {
   let tempObj = {..._traitObj};
-  let selectedTrait = tempObj.name;
-  let selectedFileName = tempObj.filename;
+  let selectedTrait = `${tempObj.name}${tempObj.fileExtension}`;
+
+  // map _layersOrder to return array only containing _layersOrder[i].name
+  let layerNames = _layersOrder.map((layer) => layer.ogName);
 
   // Clean layer path
   let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
@@ -435,32 +478,40 @@ const checkConditional = (_layer, _traitObj, _dna) => {
   // Fetch conditional parent layer's traits
   let conditionalParentLayers = _layer.conditionalOn;
 
+  let conditionalParentPath = layerPath;
   if (conditionalParentLayers.length > 0) {
     conditionalParentLayers.forEach((conditionalParent) => {
-      let conditionalParentTraits = fs.readdirSync(`${layersDir}/${conditionalParent}/`);
-      console.log('layersDir: ', layerPath);
-      console.log('conditionalParentDir: ', `${layerPath}/${conditionalParent}`);
-      
-      let cleanTraits = conditionalParentTraits.map((file) => cleanName(file));
-      console.log(cleanTraits);
+      let conditionalParentIndex = layerNames.indexOf(conditionalParent);
+      if (conditionalParentIndex >= 0) {
+        // Split DNA into cleanName array
+        let splitDna = _dna.split(DNA_DELIMITER).map(item => item.split(':')[1]);
 
-      cleanTraits.forEach((parentTrait, index) => {
-        if (_dna.includes(parentTrait)) {
-          let conditionalTraitPath = `${layerPath}/${conditionalParent}/${parentTrait}`;
-          // console.log(conditionalTraitPath);  
-          let conditionalTraitExists = fs.existsSync(conditionalTraitPath);
-          if (conditionalTraitExists) {
-            tempObj.path = conditionalTraitPath;
-            tempObj.filename = conditionalParentTraits[index];
-          } else {
-            return;
-          }
+        let conditionalParentTraits;
+
+        if (fs.existsSync(`${conditionalParentPath}${conditionalParent}`)) {
+          conditionalParentTraits = fs.readdirSync(`${conditionalParentPath}${conditionalParent}`);
+          // Proceed with logic
+        } else {
+          console.warn(`Path does not exist: ${conditionalParentPath}${conditionalParent}`);
         }
-      });
+        let cleanTraits = conditionalParentTraits.map((file) => cleanName(file));
+        // Append path with new conditional parent folders  
+        cleanTraits.forEach((parentTrait, index) => {
+          if (splitDna[conditionalParentIndex] == parentTrait) {
+            conditionalParentPath += `${conditionalParent}/${parentTrait}/`;
+          }
+        });
+      } else {
+        console.log(`Conditional parent layer '${conditionalParent}' not found in layersOrder`);
+      }
     });
+
+    tempObj.path = `${conditionalParentPath}${selectedTrait}`;
+    tempObj.filename = selectedTrait;
+    // tempObj.path = conditionalParentPath;
   }
 
-  return _traitObj;
+  return tempObj;
 }
 
 const checkSubTraits = (layer, _traitObj) => {
@@ -470,7 +521,7 @@ const checkSubTraits = (layer, _traitObj) => {
 
   // Clean layer path
   let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
-
+  
   // Filter for subTrait folders
   let subTraitFolders = fs
     .readdirSync(`${layerPath}`)
@@ -540,7 +591,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
 
-    selectedElement = checkConditional(layer, { ...selectedElement }, _dna);
+    selectedElement = checkConditional(layer, { ...selectedElement }, _dna, _layers);
 
     let selectedSubTraits = checkSubTraits(layer, selectedElement);
 
@@ -1362,7 +1413,6 @@ const createPNG = async () => {
     }
     
     saveImage(item.edition);
-    // console.log(`Generated photo for edition ${item.edition}`);
 
     // const elapsedTime = process.hrtime(startTime);
     // const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
@@ -1374,15 +1424,18 @@ const createPNG = async () => {
     //   const remainingTimeMs = totalTimeMs - singleImageTimeMs;
 
     //   const remainingTimeSeconds = remainingTimeMs / 1000;
-    //   console.log()
-    //   console.log(`Estimated time for remaining ${editionSize - 1} images: ${formatTime(remainingTimeSeconds)}`);
+    //   console.log(`\nEstimated time for remaining ${editionSize - 1} images: ${formatTime(remainingTimeSeconds)}`);
       
-    //   // Wait for 5 seconds before continuing
-    //   await delay(5000);
+    //   // Wait for 3 seconds before continuing
+    //   await delay(3000);
     // }
     progressBar.increment();
   }
   progressBar.stop();
 };
 
-module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createPNG };
+const createGIF = async () => {
+  // Follow the same process as createPNG, but instead of saving each image, add it to the GIF
+};
+
+module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createPNG, createGIF };
