@@ -18,12 +18,24 @@ async function copyFilesAndFolders() {
     const targetDirectory = `archive/${enteredName}`;
     await fs.ensureDir(targetDirectory);
 
-    // Copy './layers/' folder and its contents to target directory
+    // Copy src folder and its contents to archive directory
     const srcFolder = './src';
     const targetSrcFolder = path.join(targetDirectory, 'src');
     await fs.copy(srcFolder, targetSrcFolder);
 
-    // Copy './layers/' folder and its contents to target directory
+    // Delete src contents and restore from template
+    const configFile = './src/config.js';
+    const mainFile = './src/main.js';
+    const configTemplate = './srcTemplate/configTemplate.js';
+    const mainTemplate = './srcTemplate/mainTemplate.js';
+
+    await fs.remove(configFile);
+    await fs.remove(mainFile);
+
+    await fs.copyFile(configTemplate, configFile);
+    await fs.copyFile(mainTemplate, mainFile);
+
+    // Copy layers folder and its contents to target directory
     const layersFolder = './layers';
     const targetLayersFolder = path.join(targetDirectory, 'layers');
     await fs.copy(layersFolder, targetLayersFolder);
