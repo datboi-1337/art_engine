@@ -219,8 +219,12 @@ const layersSetup = (layersOrder) => {
         ? layerObj.options?.["subTraits"]
         : false,
     exclude: 
-        layerObj.options?.["exclude"] != undefined
-        ? layerObj.options?.["exclude"]
+      layerObj.options?.["exclude"] != undefined
+      ? layerObj.options?.["exclude"]
+      : false,
+    conditionalOn:
+      layerObj.options?.["conditionalOn"] != undefined
+        ? layerObj.options?.["conditionalOn"]
         : false,
   }));
   return layers;
@@ -420,6 +424,45 @@ const checkVariant = (_variant, _traitObj) => {
   return tempObj;
 }
 
+const checkConditional = (_layer, _traitObj, _dna) => {
+  let tempObj = {..._traitObj};
+  let selectedTrait = tempObj.name;
+  let selectedFileName = tempObj.filename;
+
+  // Clean layer path
+  let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
+
+  // Fetch conditional parent layer's traits
+  let conditionalParentLayers = _layer.conditionalOn;
+
+  if (conditionalParentLayers.length > 0) {
+    conditionalParentLayers.forEach((conditionalParent) => {
+      let conditionalParentTraits = fs.readdirSync(`${layersDir}/${conditionalParent}/`);
+      console.log('layersDir: ', layerPath);
+      console.log('conditionalParentDir: ', `${layerPath}/${conditionalParent}`);
+      
+      let cleanTraits = conditionalParentTraits.map((file) => cleanName(file));
+      console.log(cleanTraits);
+
+      cleanTraits.forEach((parentTrait, index) => {
+        if (_dna.includes(parentTrait)) {
+          let conditionalTraitPath = `${layerPath}/${conditionalParent}/${parentTrait}`;
+          // console.log(conditionalTraitPath);  
+          let conditionalTraitExists = fs.existsSync(conditionalTraitPath);
+          if (conditionalTraitExists) {
+            tempObj.path = conditionalTraitPath;
+            tempObj.filename = conditionalParentTraits[index];
+          } else {
+            return;
+          }
+        }
+      });
+    });
+  }
+
+  return _traitObj;
+}
+
 const checkSubTraits = (layer, _traitObj) => {
   // need to return elements array with subtraits appended?
   let tempArr = [];
@@ -478,8 +521,6 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
   let variant = '';
   let mappedDnaToLayers = _layers.map((layer, index) => {
 
-    // console.log(layer);
-
     if (_dna.split(DNA_DELIMITER)[index] == undefined) {
       console.log(_dna);
       console.log(allTraitsCount);
@@ -498,6 +539,8 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
 
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
+
+    selectedElement = checkConditional(layer, { ...selectedElement }, _dna);
 
     let selectedSubTraits = checkSubTraits(layer, selectedElement);
 
@@ -522,6 +565,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       zindex: selectedElement.zindex,
       subTraits: selectedSubTraits,
       exclude: layer.exclude || excludedTrait ? true : false,
+      conditionalOn: layer.conditionalOn,
     };
   });
   return mappedDnaToLayers;
