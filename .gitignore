@@ -153,3 +153,7 @@ package-lock.json
 /backup
 /cache
 /archive
+/debug_frames
+/temp_frames
+/output
+/normalized_gifs

@@ -2,7 +2,7 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-const collectionSize = 30;
+const collectionSize = 10;
 
 /* 
 * Set this to true if you want to use EXACT weights. 
@@ -128,7 +128,7 @@ const format = {
 };
 
 const gif = {
-  generate: false,
+  generate: true,
   numberOfFrames: 60,
   repeat: 0,
   quality: 100,

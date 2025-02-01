@@ -4,7 +4,7 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const fs = require('fs-extra');
 const sha1 = require(`${basePath}/node_modules/sha1`);
 const { createCanvas, loadImage } = require(`${basePath}/node_modules/canvas`);
-const GIFEncoder = require(`${basePath}/node_modules/gif-encoder-2`);
+const combineGIF = require(`${basePath}/modules/layerGIF.js`);
 const buildDir = `${basePath}/build`;
 const layersDir = `${basePath}/layers`;
 const {
@@ -46,7 +46,6 @@ var attributesList = [];
 var statList = [];
 var dnaList = new Set();
 const DNA_DELIMITER = "-";
-const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
 const { traitCounts, layerIncompatibilities } = require(`${basePath}/modules/isCompatible.js`);
@@ -240,7 +239,7 @@ const layersSetup = (layersOrder) => {
   return layers;
 };
 
-const saveImageOLD = (_editionCount) => {
+const saveImage = (_editionCount) => {
   fs.writeFileSync(
     `${buildDir}/images/${_editionCount}.png`,
     canvas.toBuffer("image/png", {
@@ -256,37 +255,6 @@ const saveImageOLD = (_editionCount) => {
     );
   }
 };
-
-const saveImage = (_editionCount, format = "png", encoder = null) => {
-  const filePath = `${buildDir}/images/${_editionCount}.${format}`;
-  if (format === "png") {
-      fs.writeFileSync(
-          filePath,
-          canvas.toBuffer("image/png", {
-              resolution: format.dpi,
-          })
-      );
-      if (network == NETWORK.sol || network == NETWORK.sei) {
-        fs.writeFileSync(
-          filePath,
-          canvas.toBuffer("image/png", {
-            resolution: format.dpi,
-          }),
-        );
-      }
-  } else if (format === "gif" && encoder) {
-      const readStream = encoder.createReadStream();
-      const writeStream = fs.createWriteStream(filePath);
-      readStream.pipe(writeStream);
-      writeStream.on('error', (err) => {
-          console.error(`Error saving GIF ${_editionCount}:`, err);
-      });
-      writeStream.on('finish', () => {
-          console.log(`Saved GIF: ${_editionCount}`);
-      });
-  }
-};
-
 
 const genColor = () => {
   let hue = Math.floor(Math.random() * 360);
@@ -1414,28 +1382,43 @@ const createPNG = async () => {
     
     saveImage(item.edition);
 
-    // const elapsedTime = process.hrtime(startTime);
-    // const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
-
-    // // Calculate time for one image
-    // if (i === 1) {
-    //   singleImageTimeMs = elapsedMs;
-    //   const totalTimeMs = singleImageTimeMs * editionSize;
-    //   const remainingTimeMs = totalTimeMs - singleImageTimeMs;
-
-    //   const remainingTimeSeconds = remainingTimeMs / 1000;
-    //   console.log(`\nEstimated time for remaining ${editionSize - 1} images: ${formatTime(remainingTimeSeconds)}`);
-      
-    //   // Wait for 3 seconds before continuing
-    //   await delay(3000);
-    // }
     progressBar.increment();
   }
   progressBar.stop();
 };
 
 const createGIF = async () => {
-  // Follow the same process as createPNG, but instead of saving each image, add it to the GIF
+  const rawdata = fs.readFileSync(`${basePath}/build/json/_imgData.json`);
+  const data = JSON.parse(rawdata);
+  const editionSize = data.length;
+
+  console.log("Creating GIFs...");
+  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  progressBar.start(editionSize, 0);
+
+  for (const item of data) {
+    const paths = []; // Array to store file paths for each layer
+
+    // Sort the attributes by z-index
+    const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex);
+
+    for (const attr of sortedAttributes) {
+      if (attr.imgData) {
+        paths.push(attr.imgData.path);
+      }
+    }
+
+    // Output file path for the GIF
+    const outputFile = `${buildDir}/images/${item.edition}.gif`;
+
+    // Call combineGIF with the array of paths
+    await combineGIF(paths, outputFile);
+
+    progressBar.increment();
+  }
+
+  progressBar.stop();
+  console.log("GIF generation complete.");
 };
 
 module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createPNG, createGIF };
