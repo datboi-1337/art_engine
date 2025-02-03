@@ -12,7 +12,7 @@ If you have any questions, please feel free to ask me in the various channels I 
 ---
 
 # Installation notes
-Use Node 18-20
+Use Node 20.xx.xx
 
 # General use
 0) (first time) run `npm install`
@@ -29,8 +29,6 @@ Use Node 18-20
 
 [Track current progress and see upcoming features on the project's Trello board](https://trello.com/b/PsInWbHr/datlips-art-engine)
 
-- GIF generation 👀
-- Image/Metadata IPFS upload
 - Adding terminal interaction for most metadata manipulation utilities to avoid direct script editing
 
 

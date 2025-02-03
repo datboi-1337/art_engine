@@ -11,7 +11,6 @@ const {
   countAndSave 
 } = require(`${basePath}/modules/isCompatible.js`);
 const { startCreating, buildSetup, rarityBreakdown, createImage } = require(`${basePath}/src/main.js`);
-const { gif } = require(`${basePath}/src/config.js`);
 const { cleanupTempFrames } = require(`${basePath}/modules/layerGIF.js`);
 const layersDir = `${basePath}/layers`;
 
@@ -165,28 +164,31 @@ const runScript = async () => {
   });
 
   let answer = await selectProceed.run();
+  let gifsGenerated = false;
 
   if (answer === 'Proceed with image generation') {
-    await createImage();
+    gifsGenerated = await createImage();
   } else {
     console.log('Process aborted.');
     process.exit(0);
   }
 
-  const selectClearTempFrames = new Select({
-    name: 'clearTempFrames',
-    message: 'If GIFs were generated, please review generated GIFs and choose whether to keep or clear temporary frames. \nIf you plan to re-generate, it is recommended to keep them to save generation time. \nIf you are done, you can clear them to save disk space. \nIf you did not generate GIFs, you can skip this step.',
-    choices: ['Keep temp frames', 'Clear temp frames']
-  });
-  
-  answer = await selectClearTempFrames.run();
-  
-  if (answer === 'Clear temp frames') {
-    await cleanupTempFrames(layersDir);
-    console.log('Temp frames deleted.');
-  } else {
-    console.log('Temp frames preserved.');
-    process.exit(0);
+  if (gifsGenerated) {
+    const selectClearTempFrames = new Select({
+      name: 'clearTempFrames',
+      message: 'Please review generated GIFs and choose whether to keep or clear temporary frames. \nIf you plan to re-generate, it is recommended to keep them to save generation time. \nIf you are done, you can clear them to save disk space.',
+      choices: ['Keep temp frames', 'Clear temp frames']
+    });
+    
+    answer = await selectClearTempFrames.run();
+    
+    if (answer === 'Clear temp frames') {
+      await cleanupTempFrames(layersDir);
+      console.log('Temp frames deleted.');
+    } else {
+      console.log('Temp frames preserved.');
+      process.exit(0);
+    }
   }
 };
 

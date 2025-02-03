@@ -1344,6 +1344,8 @@ const createImage = async () => {
     const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     progressBar.start(editionSize, 0);
 
+    let gifsGenerated = false;
+
     for (const item of data) {
       const paths = []; 
       let isGif = false; 
@@ -1357,6 +1359,7 @@ const createImage = async () => {
           // If any layer is a GIF, set isGif flag to true
           if (attr.imgData.outputType === ".gif") {
             isGif = true; 
+            gifsGenerated = true;
           }
         }
       }
@@ -1395,6 +1398,7 @@ const createImage = async () => {
 
     progressBar.stop();
     console.log("Image generation complete.");
+    return gifsGenerated;
   } else {
     console.log('oneOfOne images do not require generation.');
   }
