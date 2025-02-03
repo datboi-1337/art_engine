@@ -1,44 +1,54 @@
-const fs = require('fs');
-const path = require('path');
-const gifFrames = require('gif-frames');
-const GifEncoder = require('gif-encoder-2');
-const { createCanvas, loadImage } = require('canvas');
+const fs = require("fs");
+const path = require("path");
+const { execFile } = require("child_process");
+const ffmpegPath = require("ffmpeg-static");
+const GifEncoder = require("gif-encoder-2");
+const { createCanvas, loadImage } = require("canvas");
 
 /**
- * Extract frames from a GIF and return them as buffers.
- * @param {string} gifURL - Path or URL to the GIF.
+ * Extract frames from a GIF using ffmpeg and return them as buffers.
+ * @param {string} gifPath - Path to the GIF.
  * @returns {Promise<Array<Buffer>>} - Resolves with an array of frame buffers.
  */
-const gifToBuffer = (gifURL) => {
+const gifToBuffer = (gifPath) => {
   return new Promise((resolve, reject) => {
-    if (!gifURL.trim()) {
-      return reject('GIF URL is required.');
+    const outputFolder = path.join(path.dirname(gifPath), "temp_frames");
+    if (!fs.existsSync(outputFolder)) {
+      fs.mkdirSync(outputFolder, { recursive: true });
     }
 
-    gifFrames({ url: gifURL, frames: 'all', outputType: 'png' })
-      .then((frameData) => {
-        const buffers = [];
-        let processedFrames = 0;
+    // Extract frames to the temp folder
+    execFile(
+      ffmpegPath,
+      ["-i", gifPath, `${outputFolder}/frame_%04d.png`],
+      (error) => {
+        if (error) {
+          return reject(error);
+        }
 
-        frameData.forEach((frame, index) => {
-          const chunks = [];
-          const stream = frame.getImage();
+        // Read the extracted frames into buffers
+        const frameFiles = fs
+          .readdirSync(outputFolder)
+          .filter((file) => file.toLowerCase().endsWith(".png"))
+          .sort(); // Ensure frames are in the correct order
 
-          stream.on('data', (chunk) => chunks.push(chunk));
-          stream.on('end', () => {
-            buffers[index] = Buffer.concat(chunks);
-            processedFrames++;
+        if (frameFiles.length === 0) {
+          return reject("No frames extracted from the GIF.");
+        }
 
-            if (processedFrames === frameData.length) {
-              // All frames are processed
-              resolve(buffers);
-            }
-          });
+        const buffers = frameFiles.map((file) =>
+          fs.readFileSync(path.join(outputFolder, file))
+        );
 
-          stream.on('error', (err) => reject(err));
-        });
-      })
-      .catch(reject);
+        // Clean up extracted frame files
+        frameFiles.forEach((file) =>
+          fs.unlinkSync(path.join(outputFolder, file))
+        );
+        fs.rmdirSync(outputFolder);
+
+        resolve(buffers);
+      }
+    );
   });
 };
 
@@ -48,16 +58,16 @@ const combineGIF = async (imagePaths, outputFile) => {
     const pngImages = [];
 
     for (const filePath of imagePaths) {
-      if (filePath.toLowerCase().endsWith('.gif')) {
-        const gifName = path.basename(filePath, '.gif');
+      if (filePath.toLowerCase().endsWith(".gif")) {
+        const gifName = path.basename(filePath, ".gif");
         gifBuffers[gifName] = await gifToBuffer(filePath);
-      } else if (filePath.toLowerCase().endsWith('.png')) {
+      } else if (filePath.toLowerCase().endsWith(".png")) {
         const pngImage = await loadImage(filePath);
         pngImages.push(pngImage);
       }
     }
 
-    const maxFrames = 60; // TODO: pull this from config. 
+    const maxFrames = 60; // TODO: pull this from config.
     const firstFrameBuffer = gifBuffers[Object.keys(gifBuffers)[0]][0];
     const firstFrame = await loadImage(firstFrameBuffer);
 
@@ -65,14 +75,14 @@ const combineGIF = async (imagePaths, outputFile) => {
     const height = firstFrame.height;
 
     const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
 
     // Initialize GifEncoder
-    const gifEncoder = new GifEncoder(width, height, 'octree');
+    const gifEncoder = new GifEncoder(width, height, "octree");
     const outputStream = fs.createWriteStream(outputFile);
 
-    gifEncoder.setRepeat(0); // TODO: pull this from config. 
-    gifEncoder.setDelay(40); // TODO: pull this from config. 
+    gifEncoder.setRepeat(0); // TODO: pull this from config.
+    gifEncoder.setDelay(40); // TODO: pull this from config.
     gifEncoder.start();
     gifEncoder.createReadStream().pipe(outputStream);
 
@@ -96,10 +106,8 @@ const combineGIF = async (imagePaths, outputFile) => {
     }
 
     gifEncoder.finish();
-
-    // console.log(`Combined GIF saved to: ${outputFile}`);
   } catch (error) {
-    console.error('Error creating GIF:', error);
+    console.error("Error creating GIF:", error);
   }
 };
 

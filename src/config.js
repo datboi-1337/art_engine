@@ -106,11 +106,9 @@ const layerConfigurations = [
     namePrefix: collectionName,
     description: description,
     layersOrder: [
-      { name: "Background"},
+      { name: "Background" },
       { name: "Skin" }, 
-      { name: "Outfit", options: {
-        conditionalOn: [ "Skin" ],
-      } }, 
+      { name: "Outfit" },
       { name: "Face" }, 
       { name: "Hair" },
       { name: "Action", options: {
@@ -127,12 +125,13 @@ const format = {
   smoothing: false,
 };
 
+// Set generate to true if any layers are .gif
 const gif = {
   generate: true,
   numberOfFrames: 60,
   repeat: 0,
   quality: 100,
-  delay: 500,
+  delay: 40,
 };
 
 const extraMetadata = {};
