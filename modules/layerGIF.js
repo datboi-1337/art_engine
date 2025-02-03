@@ -109,25 +109,22 @@ const cleanupTempFrames = (baseDir) => {
   }
 };
 
-const combineGIF = async (imagePaths, outputFile) => {
+const combineGIF = async (imagePaths, outputFile, sortedAttributes) => {
   try {
     const gifBuffers = {};
-    const pngImages = [];
+    // const pngImages = [];
 
     for (const filePath of imagePaths) {
       if (filePath.toLowerCase().endsWith(".gif")) {
         const gifName = path.basename(filePath, ".gif");
         gifBuffers[gifName] = await gifToBuffer(filePath);
-      } else if (filePath.toLowerCase().endsWith(".png")) {
-        const pngImage = await loadImage(filePath);
-        pngImages.push(pngImage);
+      // } else if (filePath.toLowerCase().endsWith(".png")) {
+      //   const pngImage = await loadImage(filePath);
+      //   pngImages.push(pngImage);
       }
     }
 
     const maxFrames = gif.numberOfFrames;
-    const firstFrameBuffer = gifBuffers[Object.keys(gifBuffers)[0]][0];
-    const firstFrame = await loadImage(firstFrameBuffer);
-
     const width = format.width;
     const height = format.height;
 
@@ -146,17 +143,25 @@ const combineGIF = async (imagePaths, outputFile) => {
     for (let i = 0; i < maxFrames; i++) {
       ctx.clearRect(0, 0, width, height);
 
-      // Draw GIF frames
-      for (const [gifName, frames] of Object.entries(gifBuffers)) {
-        const totalFrames = frames.length;
-        const frameIndex = Math.floor((i / maxFrames) * totalFrames);
-        const frameImage = await loadImage(frames[frameIndex]);
-        ctx.drawImage(frameImage, 0, 0);
-      }
+      // Draw all layers in the correct order based on `z-index`
+      for (const attr of sortedAttributes) {
+        const { imgData } = attr;
 
-      // Draw PNGs on every frame
-      for (const pngImage of pngImages) {
-        ctx.drawImage(pngImage, 0, 0, width, height);
+        if (imgData.outputType === ".gif") {
+          // Render the appropriate GIF frame
+          const gifName = path.basename(imgData.path, ".gif");
+          const frames = gifBuffers[gifName];
+          const totalFrames = frames.length;
+          const frameIndex = Math.floor((i / maxFrames) * totalFrames);
+          const frameImage = await loadImage(frames[frameIndex]);
+          ctx.drawImage(frameImage, 0, 0);
+        } else if (imgData.outputType === ".png") {
+          // Render PNG layers
+          const img = await loadImage(imgData.path);
+          ctx.globalAlpha = imgData.opacity;
+          ctx.globalCompositeOperation = imgData.blend;
+          ctx.drawImage(img, 0, 0, width, height);
+        }
       }
 
       gifEncoder.addFrame(ctx);

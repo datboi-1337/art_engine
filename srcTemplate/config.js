@@ -129,7 +129,6 @@ const format = {
 
 // Set generate to true if any layers are .gif
 const gif = {
-  generate: true,
   numberOfFrames: 60,
   repeat: 0,
   quality: 100,

@@ -154,6 +154,8 @@ const getRarityWeight = (_str) => {
   let weight = capitalizeFirstLetter(_str.slice(0, -4).split(rarityDelimiter).pop());
   if (exactWeight) {
     var finalWeight = weight;
+  } else if (oneOfOne) {
+    var finalWeight = 1;
   } else if (isNaN(weight)) {
     // Ensure non-number weights appropriately adhere to rarity_config
     if (!rarity_config[weight]) {
@@ -269,11 +271,11 @@ const drawBackground = () => {
 };
 
 // const addMetadata = (_dna, _edition) => {
-const addMetadata = (_dna, _name, _desc, _edition) => {
+const addMetadata = (_dna, _name, _desc, _edition, _ext) => {
   let tempMetadata = {
     name: `${_name} #${_edition}`,
     description: _desc,
-    image: `${baseUri}/${_edition}.png`,
+    image: `${baseUri}/${_edition}${_ext}`,
     animation_url: ``,
     edition: _edition,
     ...extraMetadata,
@@ -287,7 +289,7 @@ const addMetadata = (_dna, _name, _desc, _edition) => {
       symbol: symbol,
       description: tempMetadata.description,
       seller_fee_basis_points: solanaMetadata.seller_fee_basis_points,
-      image: `${_edition}.png`,
+      image: `${_edition}${_ext}`,
       animation_url: ``,
       external_url: solanaMetadata.external_url,
       edition: _edition,
@@ -297,8 +299,8 @@ const addMetadata = (_dna, _name, _desc, _edition) => {
       properties: {
         files: [
           {
-            uri: `${_edition}.png`,
-            type: "image/png",
+            uri: `${_edition}${_ext}`,
+            type: `image/${_ext}`,
           },
         ],
         category: "image",
@@ -311,7 +313,7 @@ const addMetadata = (_dna, _name, _desc, _edition) => {
       symbol: symbol,
       collection: collectionName,
       description: _desc,
-      image: `${_edition}.png`,
+      image: `${_edition}${_ext}`,
       animation_url: ``,
       edition: _edition,
       ...extraMetadata,
@@ -1212,10 +1214,20 @@ const startCreating = async () => {
           statList = [];
         }
 
+        let imageExt = '.png';
+
+        // If there are any gifs, change file extension to .gif
+        attributesList.forEach((attr) => {
+          const ext = attr.imgData.outputType;
+          if (ext == '.gif') {
+            imageExt = ext;
+          }
+        });
+
         let name = layerConfigurations[layerConfigIndex].namePrefix;
         let desc = layerConfigurations[layerConfigIndex].description;
 
-        addMetadata(newDna, name, desc, abstractedIndexes[0]+resumeNum);
+        addMetadata(newDna, name, desc, abstractedIndexes[0]+resumeNum, imageExt);
         saveMetaDataSingleFile(abstractedIndexes[0]+resumeNum);
 
         // console.log(
@@ -1344,11 +1356,10 @@ const createImage = async () => {
     const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     progressBar.start(editionSize, 0);
 
-    let gifsGenerated = false;
+    let isGif = false;
 
     for (const item of data) {
       const paths = []; 
-      let isGif = false; 
 
       // Sort the attributes by z-index
       const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex);
@@ -1359,14 +1370,13 @@ const createImage = async () => {
           // If any layer is a GIF, set isGif flag to true
           if (attr.imgData.outputType === ".gif") {
             isGif = true; 
-            gifsGenerated = true;
           }
         }
       }
 
       if (isGif) {
         const outputFile = `${buildDir}/images/${item.edition}.gif`;
-        await combineGIF(paths, outputFile);
+        await combineGIF(paths, outputFile, sortedAttributes);
       } else {
         // Output file path for the PNG
         ctx.clearRect(0, 0, format.width, format.height);
@@ -1398,7 +1408,7 @@ const createImage = async () => {
 
     progressBar.stop();
     console.log("Image generation complete.");
-    return gifsGenerated;
+    return isGif;
   } else {
     console.log('oneOfOne images do not require generation.');
   }

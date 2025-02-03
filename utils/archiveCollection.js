@@ -2,6 +2,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const { prompt } = require('enquirer');
+const { collectionName } = require('../src/config');
 
 async function copyFilesAndFolders() {
   try {
@@ -9,10 +10,10 @@ async function copyFilesAndFolders() {
     const response = await prompt({
       type: 'input',
       name: 'name',
-      message: 'Enter a name:',
+      message: `Use "${collectionName}" as the name? (Press Enter to accept or type a new name)`,
     });
 
-    const enteredName = response.name;
+    const enteredName = response.name.trim() || collectionName;
 
     // Create target directory
     const targetDirectory = `archive/${enteredName}`;

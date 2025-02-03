@@ -2,7 +2,7 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-const collectionSize = 75;
+const collectionSize = 77;
 const oneOfOne = false;
 
 /* 
@@ -103,11 +103,12 @@ const layerConfigurations = [
     ],
   },
   {
-    growEditionSizeTo: 10, // This will generate 10 images with this layersOrder
+    growEditionSizeTo: 12, // This will generate 12 images with this layersOrder
     namePrefix: collectionName,
     description: description,
     layersOrder: [
       { name: "Background" },
+      { name: "Body" },
       { name: "Skin" }, 
       { name: "Outfit" },
       { name: "Face" }, 

@@ -34,9 +34,16 @@ Use Node 20.xx.xx
 
 # Enhanced Features in this fork
 ---
-
 ## More efficient generation
 - [Split metadata and image generation](#split-metadata-and-image-generation)
+
+## GIF generation
+- [Generate GIFS and/or PNG](#generate-gifs)
+  - [GIF example](#gif-example)
+
+## 1 of 1 metadata generation
+- [Generate metadata for non-generated images](#oneofone)
+- [oneOfOne example](#oneofone-example)
 
 ## Conditional generation
 - [Guided wizard for setting incompatible traits and forced combinations](#compatibility-wizard)
@@ -59,9 +66,12 @@ Use Node 20.xx.xx
 - [Set trait weight to equal the exact number of times you want that trait in the collection rather than using rng](#use-exact-weight-instead-of-rng)
   - [Exact weight example](#exact-weight-example)
 
-## Layer Variation
-- [Assign layer variations to ensure layers with that variation match eachother](#layer-variation-system)
+## ~~Layer Variation~~ Conditional Parents
+**NOTE:** Layer Variation system will be depreciated in favor of the new [conditional parents](#conditional-parents) system. It will still function for now. 
+- OLD - [Assign layer variations to ensure layers with that variation match eachother](#layer-variation-system)
   - [layer variation example](#layer-variation-example)
+- NEW - [Conditional parents](#conditional-parents)
+  - [Conditional parent example](#conditional-parent-example)
 
 ## SubTrait options for granular control
 - [Assign advanced subTraits with independant image control options like blend, opacity, and Z-Index](#subtrait-options)
@@ -100,14 +110,15 @@ Use Node 20.xx.xx
   - [growEditionSizeTo example](#growEditionSizeTo-example)
 
 ## Backup, Cache, Archive, & Restore
-- [Generation, edits, and past collections can all be saved and restored](#restoration-system)
-  -[Restore examples](#restore-example)
+- [Generation, edits, and past collections will be saved and can be restored](#restoration-system)
+  -[Restore example](#restore-example)
+- [Archive past collections and reset engine](#archive-system)
+  - [Archive example](#archive-example)
 
 ## Exclude traits from metadata
 - [Define any traits that should not be included in metadata](#exclude-traits-from-metadata)
 
 ## Utils
-- [archiveCollection](#archiveCollection)
 - [cleanMetadata](#cleanmetadata)
 - [removeAttributes](#removeattributes)
 - [renameAttributes](#renameattributes)
@@ -123,6 +134,80 @@ All metadata will be generated immediately upon running `npm run generate`. This
 ![photoGeneration](media/proceed_to_photo_generation.png)
 
 **NOTE**: Your most recent generation is cached in build/json/_imgData.json. You can regenerate images again with the command `npm run generate_photos`. This is especially useful when a trait needs to be edited, since you can regenerate the images without needing to *also* regenerate the metadata. 
+
+# Generate GIFs
+GIF generation is now supported! You can use either .gif or .png trait files to generate images. In it's current implementation, .gif scaling isn't well supported, so be sure to set your trait .gifs to the size you intend your final NFT to be, and set `format.width` and `format.height` to that resolution.
+Mixed use is possible. So if you want to have some .png layers and some .gif layers, the engine should layer the .png into a final .gif. 
+All layer options (subTraits, etc.) are compatible with .gif traits. 
+
+# GIF example
+Place .gifs in layer folders like you would .png. 
+![gifFolder](media/gif_folder.png)
+Setup layer configuration the same way as .png images
+```js
+{
+  growEditionSizeTo: 12, // This will generate 12 images with this layersOrder
+  namePrefix: collectionName,
+  description: description,
+  layersOrder: [
+    { name: "Background" },
+    { name: "Body" }, // .png layer example
+    { name: "Skin" }, 
+    { name: "Outfit" },
+    { name: "Face" }, 
+    { name: "Hair" },
+    { name: "Action", options: {
+      conditionalOn: [ "Skin", "Outfit" ],
+    } },
+  ],
+},
+```
+Setup `gif` in config.js to match your desired settings. These should typically match your source .gif settings, but will render whatever you enter here. 
+```js
+const gif = {
+  numberOfFrames: 60,
+  repeat: 0, // Infinite loop
+  quality: 100,
+  delay: 40,
+};
+```
+**NOTE:** .gif files that contain fewer frames will be spread over the `numberOfFrames`. If `numberOfFrames` is set to 60 and one .gif has only 2 frames, it will play the first frame for the first 30 frames, and the second frame for the last 30 frames. 
+Individual traits:
+![separateGifs](media/gif_separate_traits.gif)
+This example adds a .png layer for demonstration
+![gifExample1](media/gif_example_1.gif) 
+The engine will temporarily extract individual frames from each gif and store them in a 'temp_frames' folder in the same directory as the trait .gif. After image generation, you will be prompted to either clear or keep these files. 
+![clearTempFrames](media/clearTempFrames_prompt.png)
+
+# OneOfOne
+When images don't need to be generated because the collection is all 1 of 1, this system can be enabled. Because the images do not require generation, this system will only generate metadata. 
+**NOTE:** Images must be placed in a folder called 'oneOfOne' like so: `./layers/oneOfOne`
+**NOTE:** Images must be named with numbers (ie: 1.png, 2.png, etc.). oneOfOne does not require weight, and should not define weight in the filename. 
+**NOTE:** It's recommended to upload the images to IPFS first so you can enter the CID into  baseURI in config.js before metadata generation. You can use the [IPFS upload system in this engine if you have a Thirdweb API key](#ipfs-upload)
+
+# OneOfOne example
+Set `oneOfOne` to true in config.js. 
+```js
+const oneOfOne = true;
+```
+Setup layerConfiguration to only reference oneOfOne folder:
+```js
+{
+  growEditionSizeTo: 100,
+  namePrefix: collectionName,
+  description: description,
+  layersOrder: [
+    { name: "oneOfOne", options: { displayName: "Unique Art"} },
+  ],
+},
+```
+**NOTE:** This will generate metadata only. There will be only one attribute with a value like 'Collection Name # Edition / Collection Size' 
+```
+{
+  "trait_type": "Unique Art",
+  "value": "Your Collection #1/100"
+},
+```
 
 # Compatibility Wizard
 You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
@@ -292,6 +377,7 @@ const exactWeight = true;
 ```
 
 # Layer variation system
+**NOTE:** Layer Variation system will be depreciated in favor of the new [conditional parents](#conditional-parents) system. It will still 
 Use this option to assign a 'variation' to multiple layers. The most common use-case for this option would be ensuring certain traits are the same color or skin pattern. To use the layer variation system, define a layer called 'Variant' in your layer configuration. Populate the 'Variant' folder with blank png, named and weighted according to your variants. Next, create folders in each trait folder where you want the variation applied, and name them after relevent variants. The engine will select a variant, then any trait chosen will adhere to that variant if possible. 
 **NOTE** 'Variant' is a restricted layer name. If your collection needs a layer called 'Variant', please be sure to name the folder something else and use the `displayName` option to name your layer appropriately. <br/>
 **NOTE** If using the variant system, 'Variant' *must* be the first defined layer. <br/>
@@ -328,6 +414,13 @@ For this setup, the layer configuration should look like this. **Please note** t
     ],
   },
 ```
+
+# Conditional Parents
+
+
+# Conditional Parents example
+
+
 # Subtrait options
 Subtraits are intended to be utilised when you have parts of a trait that need different options (blend mode, opacity, Z-Index) than it's parent. 
 
@@ -587,6 +680,13 @@ When backup is selected, any changes made will be reverted, and data from the se
 
 When archive is selected, the layers and src folder will be populated with data from the selected archive. 
 
+## Archive System
+The archive system is meant to enable saving whole collection setups. This is useful in cases where you're generating multiple collections, and may need to re-visit something down the line. 
+
+## Archive example
+When running `npm run archive`, you will be prompted to archive the collection with the current `collectionName` set in config.js. If you wish to change the name of the folder this will be saved in, you can enter any name when prompted. 'layers' and 'src' folders will be copied, and defaults are restored in the main directory. 
+![archiveExample](media/archive_prompt_1.png)
+
 ## Exclude traits from metadata
 Define any traits that should not appear in the final metadata by writing their clean name (**READ** name without Z-index, weight, or file extenstion) in the `excludeFromMetadata` array in config.js
 
@@ -598,18 +698,15 @@ Traits defined here will still generate any associated images, but will not appe
 
 # Utils
 
-## archiveCollection
-The archive system is meant to enable saving whole collection setups. This is useful in cases where you're generating multiple collections, and may need to re-visit something down the line. Running `npm run archive` will prompt you to enter a folder name where the contents of the 'layers' and 'src' folders will be copied, and defaults are restored in the main directory. 
-
 ## createOpenseaCSV
 This is a standalone script that will create Opensea studio compatible metadata from just the _metadata.json file in the build/json folder. This shouldn't be necessary if generated using the datlips engine, as Opensea studio metadata is already generated in the 'opensea-drop' folder during normal generation. This is useful as a standalone script for collections that may have been generated using a different engine. 
 
 **NOTE** _metadata.json file must be present. 
 
 ## cleanMetadata
-This utility gives the option to remove some commonly requested items. Set any to true to remove them from generated metadata. Original metadata is preserved, and clean metadata is saved to build_new/json <br/>
+This utility gives the option to remove some commonly requested items. Set any to true to remove them from generated metadata. Original metadata is preserved in backup folder. <br/>
 
-**NOTE**: These elements are used as keys in other utilities, so please be sure to backup your metadata before running this, and only run AFTER running any other metadata manipulation utility (rename, update URI, etc.).
+**NOTE**: These elements are used as keys in other utilities, so please be sure to only run AFTER running any other metadata manipulation utility (rename, update URI, etc.), or be prepared to restore a backup before changing things again.
 
 ```js
 let removeDna = true;
