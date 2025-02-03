@@ -37,6 +37,7 @@ const {
   statBlocks,
   extraAttributes,
   bypassZeroProtection,
+  oneOfOne,
 } = require(`${basePath}/src/config.js`);
 const canvas = createCanvas(format.width, format.height);
 const ctx = canvas.getContext("2d");
@@ -323,16 +324,17 @@ const addMetadata = (_dna, _name, _desc, _edition) => {
   attributesList = [];
 };
 
-const addAttributes = (_element) => {
+const addAttributes = (_element, _edition) => {
   let selectedElement = _element.selectedElement;
   attributesList.push({
     trait_type: _element.name,
-    value: selectedElement.name,
+    value: oneOfOne ? `${collectionName} #${_edition}/${collectionSize}` : selectedElement.name,
     imgData: {
       path: selectedElement.path,
       blend: _element.blend,
       opacity: _element.opacity,
       zindex: _element.zindex,
+      outputType: selectedElement.fileExtension,
     },
     exclude: _element.exclude
   });
@@ -635,7 +637,7 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
   return !_DnaList.has(_filteredDNA);
 };
 
-const createDnaExact = (_layers, layerConfigIndex) => {
+const createDnaExact = (_layers, layerConfigIndex, _currentEdition) => {
   let selectedTraits = [];
   let nestLookup = [];
 
@@ -741,6 +743,15 @@ const createDnaExact = (_layers, layerConfigIndex) => {
           elements.push(tempElement);
         }
       }
+    }
+
+    if (oneOfOne) {
+      elements = [];
+      elements.push({
+        id: layer.elements[_currentEdition].id,
+        name: layer.elements[_currentEdition].name,
+        weight: layer.elements[_currentEdition].weight
+      });
     }
 
     var totalWeight = 0;
@@ -1173,7 +1184,8 @@ const startCreating = async () => {
     while (
       editionCount <= cumulativeEditionSize
     ) {
-      let newDna = createDnaExact(layers, layerConfigIndex);
+      let currentEdition = editionCount - 1;
+      let newDna = createDnaExact(layers, layerConfigIndex, currentEdition);
 
       let duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 
@@ -1184,8 +1196,8 @@ const startCreating = async () => {
         results.forEach((layer) => {
           // Deduct selected layers from allTraitscount
           allTraitsCount[layer.name][layer.selectedElement.name]--;
-
-          addAttributes(layer);
+          
+          addAttributes(layer, abstractedIndexes[0]+resumeNum);
         })
 
         // Add any additional metadata
@@ -1322,103 +1334,70 @@ const rarityBreakdown = () => {
   }
 }
 
-const formatTime = (totalSeconds) => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  return `${hours} hours, ${minutes} minutes, ${seconds} seconds`;
-};
+const createImage = async () => {
+  if (!oneOfOne) {
+    const rawdata = fs.readFileSync(`${basePath}/build/json/_imgData.json`);
+    const data = JSON.parse(rawdata);
+    const editionSize = data.length;
 
-const delay = (ms) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
+    console.log("Creating images...");
+    const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+    progressBar.start(editionSize, 0);
 
-const createPNG = async () => {
-  let rawdata = fs.readFileSync(`${basePath}/build/json/_imgData.json`);
-  let data = JSON.parse(rawdata);
-  let editionSize = data.length;
+    for (const item of data) {
+      const paths = []; 
+      let isGif = false; 
 
-  debugLogs ? console.log("Clearing canvas") : null;
-  ctx.clearRect(0, 0, format.width, format.height);
+      // Sort the attributes by z-index
+      const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex);
 
-  if (background.generate) {
-    drawBackground();
-  }
-
-  // const startTime = process.hrtime();
-  // let singleImageTimeMs = 0;
-
-  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  progressBar.start(editionSize, 0);
-
-  let i = 0;
-  for (const item of data) {
-    i++;
-    debugLogs ? console.log("Clearing canvas") : null;
-    ctx.clearRect(0, 0, format.width, format.height);
-
-    if (background.generate) {
-      drawBackground();
-    }
-
-    const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex); 
-
-    for (const attr of sortedAttributes) {
-      if (attr.imgData) {
-        ctx.globalAlpha = attr.imgData.opacity;
-        ctx.globalCompositeOperation = attr.imgData.blend;
-
-        const img = await loadImage(attr.imgData.path);
-
-        ctx.drawImage(img, 0, 0, format.width, format.height);
+      for (const attr of sortedAttributes) {
+        if (attr.imgData) {
+          paths.push(attr.imgData.path);
+          // If any layer is a GIF, set isGif flag to true
+          if (attr.imgData.outputType === ".gif") {
+            isGif = true; 
+          }
+        }
       }
-    }
 
-    if (i == 1) {
-      if (network == NETWORK.sei) {
-        saveImage(-1);
+      if (isGif) {
+        const outputFile = `${buildDir}/images/${item.edition}.gif`;
+        await combineGIF(paths, outputFile);
+      } else {
+        // Output file path for the PNG
+        ctx.clearRect(0, 0, format.width, format.height);
+
+        if (background.generate) {
+          drawBackground();
+        }
+
+        for (const attr of sortedAttributes) {
+          if (attr.imgData) {
+            ctx.globalAlpha = attr.imgData.opacity;
+            ctx.globalCompositeOperation = attr.imgData.blend;
+
+            const img = await loadImage(attr.imgData.path);
+            ctx.drawImage(img, 0, 0, format.width, format.height);
+          }
+        }
+
+        // Save special -1 image for SEI
+        if (item.edition === 1 && network === NETWORK.sei) {
+          saveImage(-1); 
+        }
+
+        saveImage(item.edition);
       }
-    }
-    
-    saveImage(item.edition);
 
-    progressBar.increment();
+      progressBar.increment();
+    }
+
+    progressBar.stop();
+    console.log("Image generation complete.");
+  } else {
+    console.log('oneOfOne images do not require generation.');
   }
-  progressBar.stop();
 };
 
-const createGIF = async () => {
-  const rawdata = fs.readFileSync(`${basePath}/build/json/_imgData.json`);
-  const data = JSON.parse(rawdata);
-  const editionSize = data.length;
-
-  console.log("Creating GIFs...");
-  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  progressBar.start(editionSize, 0);
-
-  for (const item of data) {
-    const paths = []; // Array to store file paths for each layer
-
-    // Sort the attributes by z-index
-    const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex);
-
-    for (const attr of sortedAttributes) {
-      if (attr.imgData) {
-        paths.push(attr.imgData.path);
-      }
-    }
-
-    // Output file path for the GIF
-    const outputFile = `${buildDir}/images/${item.edition}.gif`;
-
-    // Call combineGIF with the array of paths
-    await combineGIF(paths, outputFile);
-
-    progressBar.increment();
-  }
-
-  progressBar.stop();
-  console.log("GIF generation complete.");
-};
-
-module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createPNG, createGIF };
+module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createImage };

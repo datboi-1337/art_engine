@@ -10,7 +10,7 @@ const {
   checkCompatibility, 
   countAndSave 
 } = require(`${basePath}/modules/isCompatible.js`);
-const { startCreating, buildSetup, rarityBreakdown, createPNG, createGIF } = require(`${basePath}/src/main.js`);
+const { startCreating, buildSetup, rarityBreakdown, createImage } = require(`${basePath}/src/main.js`);
 const { gif } = require(`${basePath}/src/config.js`);
 const { cleanupTempFrames } = require(`${basePath}/modules/layerGIF.js`);
 const layersDir = `${basePath}/layers`;
@@ -167,7 +167,7 @@ const runScript = async () => {
   let answer = await selectProceed.run();
 
   if (answer === 'Proceed with image generation') {
-    gif.generate ? await createGIF() : await createPNG();
+    await createImage();
   } else {
     console.log('Process aborted.');
     process.exit(0);
@@ -175,7 +175,7 @@ const runScript = async () => {
 
   const selectClearTempFrames = new Select({
     name: 'clearTempFrames',
-    message: 'Please review generated GIFs. Would you like to clear temporary frames? \nIf you plan to re-generate, it is recommended to keep them to save generation time. \nIf you are done, you can clear them to save disk space.',
+    message: 'If GIFs were generated, please review generated GIFs and choose whether to keep or clear temporary frames. \nIf you plan to re-generate, it is recommended to keep them to save generation time. \nIf you are done, you can clear them to save disk space. \nIf you did not generate GIFs, you can skip this step.',
     choices: ['Keep temp frames', 'Clear temp frames']
   });
   

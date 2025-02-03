@@ -156,7 +156,7 @@ const combineGIF = async (imagePaths, outputFile) => {
 
       // Draw PNGs on every frame
       for (const pngImage of pngImages) {
-        ctx.drawImage(pngImage, 0, 0);
+        ctx.drawImage(pngImage, 0, 0, width, height);
       }
 
       gifEncoder.addFrame(ctx);

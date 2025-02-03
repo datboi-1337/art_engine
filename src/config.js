@@ -2,7 +2,8 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-const collectionSize = 10;
+const collectionSize = 75;
+const oneOfOne = false;
 
 /* 
 * Set this to true if you want to use EXACT weights. 
@@ -37,72 +38,72 @@ const solanaMetadata = {
 };
 
 // It's suggested to keep shuffle enabled to avoid the same traits generating for spans of images
-const shuffleLayerConfigurations = false;
+const shuffleLayerConfigurations = true;
 
 // Populate with TRAITS you want to exclude from metadata. "None" is the default value, remove if you want "None" to appear in final metadata
 const excludeFromMetadata = ["None"];
 
 const layerConfigurations = [
-  // {
-  //   // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
-  //   growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
-  //   namePrefix: collectionName,
-  //   description: description,
-  //   layersOrder: [
-  //     { name: "Variant", options: { displayName: "Color" } }, 
-  //     { name: "Arms" },
-  //     { name: "Back" },
-  //     { name: "Body", 
-  //       options: {
-  //         subTraits: [
-  //           {
-  //           blend: MODE.multiply,
-  //           opacity: 0.5,
-  //           zindex: 25,
-  //           }
-  //         ],
-  //         conditionalOn: [ "Arms", "Back" ],
-  //       } 
-  //     },
-  //     { name: "Eyes",
-  //       options: {
-  //         subTraits: [
-  //           {
-  //           name: "Shadow",
-  //           blend: MODE.multiply,
-  //           opacity: 0.5,
-  //           zindex: 35,
-  //           }
-  //         ]
-  //       } 
-  //     },
-  //     { name: "Head" },
-  //     { name: "Legs" },
-  //     { name: "Mouth" },
-  //   ],
-  // },
-  // {
-  //   growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
-  //   namePrefix: `Skeletal ${collectionName}`,
-  //   description: 'Alternate Description for this set of tokens',
-  //   layersOrder: [
-  //     { name: "SkeletalArms", options: { exclude: true } },
-  //     { name: "SkeletalBack" }, 
-  //     { name: "SkeletalBody" }, 
-  //     { name: "SkeletalLegs" }, 
-  //     { name: "SkeletalAccessories", 
-  //       options: {
-  //         subTraits: [
-  //           {
-  //           zindex: 35,
-  //           }
-  //         ]
-  //       } 
-  //     }
-  //   ],
-  // },
   {
-    growEditionSizeTo: collectionSize, // This will generate 15 images with this layersOrder
+    // NOTE!! growEditionSizeTo should be set to the number of images you want generate within each layer configuration
+    growEditionSizeTo: 50, // << This will generate 50 images with this layersOrder
+    namePrefix: collectionName,
+    description: description,
+    layersOrder: [
+      // Variant system still works, but is being deprecated. Use conditionalOn layer option instead
+      { name: "Variant", options: { displayName: "Color" } }, 
+      { name: "Arms" },
+      { name: "Back" },
+      { name: "Body", 
+        options: {
+          subTraits: [
+            {
+            blend: MODE.multiply,
+            opacity: 0.5,
+            zindex: 25,
+            }
+          ],
+        } 
+      },
+      { name: "Eyes",
+        options: {
+          subTraits: [
+            {
+            name: "Shadow",
+            blend: MODE.multiply,
+            opacity: 0.5,
+            zindex: 35,
+            }
+          ]
+        } 
+      },
+      { name: "Head" },
+      { name: "Legs" },
+      { name: "Mouth" },
+    ],
+  },
+  {
+    growEditionSizeTo: 15, // This will generate 15 images with this layersOrder
+    namePrefix: `Skeletal ${collectionName}`,
+    description: 'Alternate Description for this set of tokens',
+    layersOrder: [
+      { name: "SkeletalArms", options: { exclude: true } },
+      { name: "SkeletalBack" }, 
+      { name: "SkeletalBody" }, 
+      { name: "SkeletalLegs" }, 
+      { name: "SkeletalAccessories", 
+        options: {
+          subTraits: [
+            {
+            zindex: 35,
+            }
+          ]
+        } 
+      }
+    ],
+  },
+  {
+    growEditionSizeTo: 10, // This will generate 10 images with this layersOrder
     namePrefix: collectionName,
     description: description,
     layersOrder: [
@@ -118,6 +119,7 @@ const layerConfigurations = [
   },
 ];
 
+// For now, when generating GIFs, it's reccomended to keep width/height the same size as your traits
 const format = {
   width: 500,
   height: 500,
@@ -307,4 +309,5 @@ module.exports = {
   statBlocks,
   extraAttributes,
   bypassZeroProtection,
+  oneOfOne,
 };

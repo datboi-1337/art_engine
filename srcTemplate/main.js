@@ -4,6 +4,7 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const fs = require('fs-extra');
 const sha1 = require(`${basePath}/node_modules/sha1`);
 const { createCanvas, loadImage } = require(`${basePath}/node_modules/canvas`);
+const { combineGIF } = require(`${basePath}/modules/layerGIF.js`);
 const buildDir = `${basePath}/build`;
 const layersDir = `${basePath}/layers`;
 const {
@@ -36,6 +37,7 @@ const {
   statBlocks,
   extraAttributes,
   bypassZeroProtection,
+  oneOfOne,
 } = require(`${basePath}/src/config.js`);
 const canvas = createCanvas(format.width, format.height);
 const ctx = canvas.getContext("2d");
@@ -45,7 +47,6 @@ var attributesList = [];
 var statList = [];
 var dnaList = new Set();
 const DNA_DELIMITER = "-";
-const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 const oldDna = `${basePath}/build_old/_oldDna.json`;
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
 const { traitCounts, layerIncompatibilities } = require(`${basePath}/modules/isCompatible.js`);
@@ -100,9 +101,7 @@ const buildSetup = async () => {
     fs.mkdirSync(`${buildDir}/opensea-drop/json`);
     fs.mkdirSync(`${buildDir}/images`);
   }
-  if (gif.export) {
-    fs.mkdirSync(`${buildDir}/gifs`);
-  }
+
   if (importOldDna) {
     let rawdata = fs.readFileSync(oldDna);
     let data = JSON.parse(rawdata);
@@ -130,11 +129,21 @@ function cleanDna(_str) {
 }
 
 const cleanName = (_str) => {
-  let nameWithoutExtension = _str.slice(0, -4);
+  let nameWithoutExtension = _str.includes(".")
+    ? _str.substring(0, _str.lastIndexOf("."))
+    : _str;
   let nameWithoutWeight = nameWithoutExtension.split(rarityDelimiter).shift();
   let nameWithoutZindex = nameWithoutWeight.split(zindexDelimiter).pop();
   return nameWithoutZindex;
 };
+
+const getFileExtension = (_str) => {
+  const lastDotIndex = _str.lastIndexOf(".");
+  return lastDotIndex > -1 && lastDotIndex < _str.length - 1
+    ? _str.substring(lastDotIndex)
+    : "";
+};
+
 
 const getZIndex = (_str) => {
   let zindex = Number(_str.split(zindexDelimiter).shift().slice(1));
@@ -185,6 +194,7 @@ const getElements = (path, _zindex) => {
         id: index,
         name: cleanName(i),
         filename: i,
+        fileExtension: getFileExtension(i),
         path: `${path}${i}`,
         weight: getRarityWeight(i),
         weightLocked: false,
@@ -219,8 +229,12 @@ const layersSetup = (layersOrder) => {
         ? layerObj.options?.["subTraits"]
         : false,
     exclude: 
-        layerObj.options?.["exclude"] != undefined
-        ? layerObj.options?.["exclude"]
+      layerObj.options?.["exclude"] != undefined
+      ? layerObj.options?.["exclude"]
+      : false,
+    conditionalOn:
+      layerObj.options?.["conditionalOn"] != undefined
+        ? layerObj.options?.["conditionalOn"]
         : false,
   }));
   return layers;
@@ -310,16 +324,17 @@ const addMetadata = (_dna, _name, _desc, _edition) => {
   attributesList = [];
 };
 
-const addAttributes = (_element) => {
+const addAttributes = (_element, _edition) => {
   let selectedElement = _element.selectedElement;
   attributesList.push({
     trait_type: _element.name,
-    value: selectedElement.name,
+    value: oneOfOne ? `${collectionName} #${_edition}/${collectionSize}` : selectedElement.name,
     imgData: {
       path: selectedElement.path,
       blend: _element.blend,
       opacity: _element.opacity,
       zindex: _element.zindex,
+      outputType: selectedElement.fileExtension,
     },
     exclude: _element.exclude
   });
@@ -420,6 +435,55 @@ const checkVariant = (_variant, _traitObj) => {
   return tempObj;
 }
 
+const checkConditional = (_layer, _traitObj, _dna, _layersOrder) => {
+  let tempObj = {..._traitObj};
+  let selectedTrait = `${tempObj.name}${tempObj.fileExtension}`;
+
+  // map _layersOrder to return array only containing _layersOrder[i].name
+  let layerNames = _layersOrder.map((layer) => layer.ogName);
+
+  // Clean layer path
+  let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
+
+  // Fetch conditional parent layer's traits
+  let conditionalParentLayers = _layer.conditionalOn;
+
+  let conditionalParentPath = layerPath;
+  if (conditionalParentLayers.length > 0) {
+    conditionalParentLayers.forEach((conditionalParent) => {
+      let conditionalParentIndex = layerNames.indexOf(conditionalParent);
+      if (conditionalParentIndex >= 0) {
+        // Split DNA into cleanName array
+        let splitDna = _dna.split(DNA_DELIMITER).map(item => item.split(':')[1]);
+
+        let conditionalParentTraits;
+
+        if (fs.existsSync(`${conditionalParentPath}${conditionalParent}`)) {
+          conditionalParentTraits = fs.readdirSync(`${conditionalParentPath}${conditionalParent}`);
+          // Proceed with logic
+        } else {
+          console.warn(`Path does not exist: ${conditionalParentPath}${conditionalParent}`);
+        }
+        let cleanTraits = conditionalParentTraits.map((file) => cleanName(file));
+        // Append path with new conditional parent folders  
+        cleanTraits.forEach((parentTrait, index) => {
+          if (splitDna[conditionalParentIndex] == parentTrait) {
+            conditionalParentPath += `${conditionalParent}/${parentTrait}/`;
+          }
+        });
+      } else {
+        console.log(`Conditional parent layer '${conditionalParent}' not found in layersOrder`);
+      }
+    });
+
+    tempObj.path = `${conditionalParentPath}${selectedTrait}`;
+    tempObj.filename = selectedTrait;
+    // tempObj.path = conditionalParentPath;
+  }
+
+  return tempObj;
+}
+
 const checkSubTraits = (layer, _traitObj) => {
   // need to return elements array with subtraits appended?
   let tempArr = [];
@@ -427,7 +491,7 @@ const checkSubTraits = (layer, _traitObj) => {
 
   // Clean layer path
   let layerPath = tempObj.path.replace(`${tempObj.filename}`, '');
-
+  
   // Filter for subTrait folders
   let subTraitFolders = fs
     .readdirSync(`${layerPath}`)
@@ -478,8 +542,6 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
   let variant = '';
   let mappedDnaToLayers = _layers.map((layer, index) => {
 
-    // console.log(layer);
-
     if (_dna.split(DNA_DELIMITER)[index] == undefined) {
       console.log(_dna);
       console.log(allTraitsCount);
@@ -498,6 +560,8 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
 
     // Update selectedElement with variant paths for imgData
     selectedElement = checkVariant(variant, { ...selectedElement });
+
+    selectedElement = checkConditional(layer, { ...selectedElement }, _dna, _layers);
 
     let selectedSubTraits = checkSubTraits(layer, selectedElement);
 
@@ -522,6 +586,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
       zindex: selectedElement.zindex,
       subTraits: selectedSubTraits,
       exclude: layer.exclude || excludedTrait ? true : false,
+      conditionalOn: layer.conditionalOn,
     };
   });
   return mappedDnaToLayers;
@@ -572,7 +637,7 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
   return !_DnaList.has(_filteredDNA);
 };
 
-const createDnaExact = (_layers, layerConfigIndex) => {
+const createDnaExact = (_layers, layerConfigIndex, _currentEdition) => {
   let selectedTraits = [];
   let nestLookup = [];
 
@@ -678,6 +743,15 @@ const createDnaExact = (_layers, layerConfigIndex) => {
           elements.push(tempElement);
         }
       }
+    }
+
+    if (oneOfOne) {
+      elements = [];
+      elements.push({
+        id: layer.elements[_currentEdition].id,
+        name: layer.elements[_currentEdition].name,
+        weight: layer.elements[_currentEdition].weight
+      });
     }
 
     var totalWeight = 0;
@@ -1110,7 +1184,8 @@ const startCreating = async () => {
     while (
       editionCount <= cumulativeEditionSize
     ) {
-      let newDna = createDnaExact(layers, layerConfigIndex);
+      let currentEdition = editionCount - 1;
+      let newDna = createDnaExact(layers, layerConfigIndex, currentEdition);
 
       let duplicatesAllowed = (allowDuplicates) ? true : isDnaUnique(dnaList, newDna);
 
@@ -1121,8 +1196,8 @@ const startCreating = async () => {
         results.forEach((layer) => {
           // Deduct selected layers from allTraitscount
           allTraitsCount[layer.name][layer.selectedElement.name]--;
-
-          addAttributes(layer);
+          
+          addAttributes(layer, abstractedIndexes[0]+resumeNum);
         })
 
         // Add any additional metadata
@@ -1259,86 +1334,70 @@ const rarityBreakdown = () => {
   }
 }
 
-const formatTime = (totalSeconds) => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  return `${hours} hours, ${minutes} minutes, ${seconds} seconds`;
-};
+const createImage = async () => {
+  if (!oneOfOne) {
+    const rawdata = fs.readFileSync(`${basePath}/build/json/_imgData.json`);
+    const data = JSON.parse(rawdata);
+    const editionSize = data.length;
 
-const delay = (ms) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
+    console.log("Creating images...");
+    const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+    progressBar.start(editionSize, 0);
 
-const createPNG = async () => {
-  let rawdata = fs.readFileSync(`${basePath}/build/json/_imgData.json`);
-  let data = JSON.parse(rawdata);
-  let editionSize = data.length;
+    for (const item of data) {
+      const paths = []; 
+      let isGif = false; 
 
-  debugLogs ? console.log("Clearing canvas") : null;
-  ctx.clearRect(0, 0, format.width, format.height);
+      // Sort the attributes by z-index
+      const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex);
 
-  if (background.generate) {
-    drawBackground();
-  }
-
-  // const startTime = process.hrtime();
-  // let singleImageTimeMs = 0;
-
-  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  progressBar.start(editionSize, 0);
-
-  let i = 0;
-  for (const item of data) {
-    i++;
-    debugLogs ? console.log("Clearing canvas") : null;
-    ctx.clearRect(0, 0, format.width, format.height);
-
-    if (background.generate) {
-      drawBackground();
-    }
-
-    const sortedAttributes = item.attributes.sort((a, b) => a.imgData.zindex - b.imgData.zindex); 
-
-    for (const attr of sortedAttributes) {
-      if (attr.imgData) {
-        ctx.globalAlpha = attr.imgData.opacity;
-        ctx.globalCompositeOperation = attr.imgData.blend;
-
-        const img = await loadImage(attr.imgData.path);
-
-        ctx.drawImage(img, 0, 0, format.width, format.height);
+      for (const attr of sortedAttributes) {
+        if (attr.imgData) {
+          paths.push(attr.imgData.path);
+          // If any layer is a GIF, set isGif flag to true
+          if (attr.imgData.outputType === ".gif") {
+            isGif = true; 
+          }
+        }
       }
-    }
 
-    if (i == 1) {
-      if (network == NETWORK.sei) {
-        saveImage(-1);
+      if (isGif) {
+        const outputFile = `${buildDir}/images/${item.edition}.gif`;
+        await combineGIF(paths, outputFile);
+      } else {
+        // Output file path for the PNG
+        ctx.clearRect(0, 0, format.width, format.height);
+
+        if (background.generate) {
+          drawBackground();
+        }
+
+        for (const attr of sortedAttributes) {
+          if (attr.imgData) {
+            ctx.globalAlpha = attr.imgData.opacity;
+            ctx.globalCompositeOperation = attr.imgData.blend;
+
+            const img = await loadImage(attr.imgData.path);
+            ctx.drawImage(img, 0, 0, format.width, format.height);
+          }
+        }
+
+        // Save special -1 image for SEI
+        if (item.edition === 1 && network === NETWORK.sei) {
+          saveImage(-1); 
+        }
+
+        saveImage(item.edition);
       }
+
+      progressBar.increment();
     }
-    
-    saveImage(item.edition);
-    // console.log(`Generated photo for edition ${item.edition}`);
 
-    // const elapsedTime = process.hrtime(startTime);
-    // const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
-
-    // // Calculate time for one image
-    // if (i === 1) {
-    //   singleImageTimeMs = elapsedMs;
-    //   const totalTimeMs = singleImageTimeMs * editionSize;
-    //   const remainingTimeMs = totalTimeMs - singleImageTimeMs;
-
-    //   const remainingTimeSeconds = remainingTimeMs / 1000;
-    //   console.log()
-    //   console.log(`Estimated time for remaining ${editionSize - 1} images: ${formatTime(remainingTimeSeconds)}`);
-      
-    //   // Wait for 5 seconds before continuing
-    //   await delay(5000);
-    // }
-    progressBar.increment();
+    progressBar.stop();
+    console.log("Image generation complete.");
+  } else {
+    console.log('oneOfOne images do not require generation.');
   }
-  progressBar.stop();
 };
 
-module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createPNG };
+module.exports = { startCreating, buildSetup, getElements, rarityBreakdown, createImage };
