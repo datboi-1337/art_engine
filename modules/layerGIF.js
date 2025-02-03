@@ -1,9 +1,11 @@
 const fs = require("fs");
 const path = require("path");
+const basePath = process.cwd();
 const { execFile } = require("child_process");
 const ffmpegPath = require("ffmpeg-static");
 const GifEncoder = require("gif-encoder-2");
 const { createCanvas, loadImage } = require("canvas");
+const {format, gif } = require(`${basePath}/src/config.js`);
 
 /**
  * Extract frames from a GIF using ffmpeg and return them as buffers.
@@ -12,9 +14,23 @@ const { createCanvas, loadImage } = require("canvas");
  */
 const gifToBuffer = (gifPath) => {
   return new Promise((resolve, reject) => {
-    const outputFolder = path.join(path.dirname(gifPath), "temp_frames");
+    const outputFolder = path.join(path.dirname(gifPath), "temp_frames", path.basename(gifPath, ".gif"));
     if (!fs.existsSync(outputFolder)) {
       fs.mkdirSync(outputFolder, { recursive: true });
+    }
+
+    // Check if frames already exist
+    const frameFiles = fs
+      .readdirSync(outputFolder)
+      .filter((file) => file.toLowerCase().endsWith(".png"))
+      .sort();
+
+    if (frameFiles.length > 0) {
+      // Frames already exist; read them into buffers
+      const buffers = frameFiles.map((file) =>
+        fs.readFileSync(path.join(outputFolder, file))
+      );
+      return resolve(buffers);
     }
 
     // Extract frames to the temp folder
@@ -27,29 +43,70 @@ const gifToBuffer = (gifPath) => {
         }
 
         // Read the extracted frames into buffers
-        const frameFiles = fs
+        const newFrameFiles = fs
           .readdirSync(outputFolder)
           .filter((file) => file.toLowerCase().endsWith(".png"))
-          .sort(); // Ensure frames are in the correct order
+          .sort();
 
-        if (frameFiles.length === 0) {
+        if (newFrameFiles.length === 0) {
           return reject("No frames extracted from the GIF.");
         }
 
-        const buffers = frameFiles.map((file) =>
+        const buffers = newFrameFiles.map((file) =>
           fs.readFileSync(path.join(outputFolder, file))
         );
-
-        // Clean up extracted frame files
-        frameFiles.forEach((file) =>
-          fs.unlinkSync(path.join(outputFolder, file))
-        );
-        fs.rmdirSync(outputFolder);
 
         resolve(buffers);
       }
     );
   });
+};
+
+/**
+ * Recursively delete all contents of a directory, including subdirectories and files.
+ * @param {string} dirPath - The directory path to clean up.
+ */
+const deleteDirectoryContents = (dirPath) => {
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const entryPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      // Recursively delete subdirectories
+      deleteDirectoryContents(entryPath);
+      fs.rmdirSync(entryPath);
+    } else {
+      // Delete files
+      fs.unlinkSync(entryPath);
+    }
+  }
+};
+
+/**
+ * Recursively find and clean up all temp_frames directories.
+ * @param {string} baseDir - The base directory to start the search.
+ */
+const cleanupTempFrames = (baseDir) => {
+  // console.log(`Searching for temp_frames directories in: ${baseDir}`);
+
+  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const entryPath = path.join(baseDir, entry.name);
+
+    if (entry.isDirectory()) {
+      if (entry.name === "temp_frames") {
+        // Clean up the temp_frames directory
+        // console.log(`Cleaning up temp_frames: ${entryPath}`);
+        deleteDirectoryContents(entryPath); // Recursively delete contents
+        fs.rmdirSync(entryPath); // Remove the empty temp_frames directory
+        // console.log(`Deleted: ${entryPath}`);
+      } else {
+        // Recursively check subdirectories
+        cleanupTempFrames(entryPath);
+      }
+    }
+  }
 };
 
 const combineGIF = async (imagePaths, outputFile) => {
@@ -67,12 +124,12 @@ const combineGIF = async (imagePaths, outputFile) => {
       }
     }
 
-    const maxFrames = 60; // TODO: pull this from config.
+    const maxFrames = gif.numberOfFrames;
     const firstFrameBuffer = gifBuffers[Object.keys(gifBuffers)[0]][0];
     const firstFrame = await loadImage(firstFrameBuffer);
 
-    const width = firstFrame.width;
-    const height = firstFrame.height;
+    const width = format.width;
+    const height = format.height;
 
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
@@ -81,8 +138,8 @@ const combineGIF = async (imagePaths, outputFile) => {
     const gifEncoder = new GifEncoder(width, height, "octree");
     const outputStream = fs.createWriteStream(outputFile);
 
-    gifEncoder.setRepeat(0); // TODO: pull this from config.
-    gifEncoder.setDelay(40); // TODO: pull this from config.
+    gifEncoder.setRepeat(gif.repeat); 
+    gifEncoder.setDelay(gif.delay); 
     gifEncoder.start();
     gifEncoder.createReadStream().pipe(outputStream);
 
@@ -92,7 +149,7 @@ const combineGIF = async (imagePaths, outputFile) => {
       // Draw GIF frames
       for (const [gifName, frames] of Object.entries(gifBuffers)) {
         const totalFrames = frames.length;
-        const frameIndex = Math.floor((i / maxFrames) * totalFrames); // Determine which frame to use
+        const frameIndex = Math.floor((i / maxFrames) * totalFrames);
         const frameImage = await loadImage(frames[frameIndex]);
         ctx.drawImage(frameImage, 0, 0);
       }
@@ -111,4 +168,4 @@ const combineGIF = async (imagePaths, outputFile) => {
   }
 };
 
-module.exports = combineGIF;
+module.exports = { combineGIF, cleanupTempFrames };

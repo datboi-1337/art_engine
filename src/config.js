@@ -119,8 +119,8 @@ const layerConfigurations = [
 ];
 
 const format = {
-  width: 512,
-  height: 512,
+  width: 500,
+  height: 500,
   dpi: 72,
   smoothing: false,
 };

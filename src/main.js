@@ -4,7 +4,7 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const fs = require('fs-extra');
 const sha1 = require(`${basePath}/node_modules/sha1`);
 const { createCanvas, loadImage } = require(`${basePath}/node_modules/canvas`);
-const combineGIF = require(`${basePath}/modules/layerGIF.js`);
+const { combineGIF } = require(`${basePath}/modules/layerGIF.js`);
 const buildDir = `${basePath}/build`;
 const layersDir = `${basePath}/layers`;
 const {
