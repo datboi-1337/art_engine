@@ -3,7 +3,9 @@
 const path = require('path');
 const isLocal = typeof process.pkg === 'undefined';
 const basePath = isLocal ? process.cwd() : path.dirname(process.execPath);
-const fs = require('fs');
+const fs = require('fs-extra');
+const { NETWORK } = require(`${basePath}/constants/network.js`);
+const { network } = require(`${basePath}/src/config.js`);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 * Rarity distribution can be adjusted
@@ -34,6 +36,23 @@ const rarityElement = false; // Add rarity as new element
 
 const includeTraitPercentages = false;
 
+// Keep backup directory clean by deleting oldest backup if more than 10 exist
+let backupDir = `${basePath}/backup`;
+let backupFolders = fs.readdirSync(backupDir);
+
+if (backupFolders.length > 10) {
+  let oldestFolder = backupFolders.sort((a, b) => a.localeCompare(b))[0];
+  fs.removeSync(`${backupDir}/${oldestFolder}`);
+}
+
+// Backup existing metadata
+const dateTime = new Date().toISOString().replace(/[-:.]/g, '_');
+const sourceDir = `${basePath}/build/json`;
+const destinationDir = `${basePath}/backup/${dateTime}`;
+
+fs.mkdirSync(destinationDir, { recursive: true });
+fs.copy(sourceDir, destinationDir);
+
 // Read json data
 let rawdata = fs.readFileSync(`${basePath}/build/json/_metadata.json`);
 let data = JSON.parse(rawdata);
@@ -43,18 +62,6 @@ let editionSize = data.length;
 const dir = `${basePath}/rarity/json`;
 if (!fs.existsSync(dir)) {
 	fs.mkdirSync(dir, {
-		recursive: true
-	});
-}
-const newDir = `${basePath}/build_new/json`;
-if (!fs.existsSync(newDir)) {
-	fs.mkdirSync(newDir, {
-		recursive: true
-	});
-}
-const newDirDrop = `${basePath}/build_new/json-drop`;
-if (!fs.existsSync(newDirDrop)) {
-	fs.mkdirSync(newDirDrop, {
 		recursive: true
 	});
 }
@@ -166,8 +173,14 @@ if(includeTraitPercentages) {
       });
     }
     item.attributes = tempAttributes;
-    fs.writeFileSync(`${basePath}/build_new/json/${item.edition}.json`, JSON.stringify(item, null, 2));
-    fs.writeFileSync(`${basePath}/build_new/json-drop/${item.edition}`, JSON.stringify(item, null, 2));
+
+    fs.writeFileSync(`${basePath}/build/json/${item.edition}.json`, JSON.stringify(item, null, 2));
+    // Add metadata to assets folder for Solana / SEI
+    if (network == NETWORK.sol || network == NETWORK.sei) {
+      fs.writeFileSync(`${basePath}/build/assets/${item.edition}.json`, JSON.stringify(data, null, 2))
+    }
+    // Save copy without file extension for opensea drop contracts
+    fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
   });
 }
 
@@ -204,11 +217,17 @@ data.forEach((item) => {
   }
   item.attributes.push(scoreTrait);
   scores.push(rarityScore);
-  fs.writeFileSync(`${basePath}/build_new/json/${item.edition}.json`, JSON.stringify(item, null, 2));
-  fs.writeFileSync(`${basePath}/build_new/json-drop/${item.edition}`, JSON.stringify(item, null, 2));
+
+  fs.writeFileSync(`${basePath}/build/json/${item.edition}.json`, JSON.stringify(item, null, 2));
+  // Add metadata to assets folder for Solana / SEI
+  if (network == NETWORK.sol || network == NETWORK.sei) {
+    fs.writeFileSync(`${basePath}/build/assets/${item.edition}.json`, JSON.stringify(data, null, 2))
+  }
+  // Save copy without file extension for opensea drop contracts
+  fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
 });
 
-fs.writeFileSync(`${basePath}/build_new/json/_metadata.json`, JSON.stringify(data, null, 2));
+fs.writeFileSync(`${basePath}/build/json/_metadata.json`, JSON.stringify(data, null, 2));
 
 // Sort scores decending
 scores.sort((a,b) => b-a);
@@ -220,7 +239,7 @@ for(let i = 0; i < scores.length; i++) {
 }
 
 // Read new json data to pull scores
-let newRawdata = fs.readFileSync(`${basePath}/build_new/json/_metadata.json`);
+let newRawdata = fs.readFileSync(`${basePath}/build/json/_metadata.json`);
 let newData = JSON.parse(newRawdata);
 
 let rank = editionSize;
@@ -241,8 +260,14 @@ for(let i = rank; i = scores.length; i--) {
           item.attributes.filter(obj => obj.trait_type == 'rarityScore')[0].value += mod;
           rank--;
           scores.pop();
-          fs.writeFileSync(`${basePath}/build_new/json/${item.edition}.json`, JSON.stringify(item, null, 2));
-          fs.writeFileSync(`${basePath}/build_new/json-drop/${item.edition}`, JSON.stringify(item, null, 2));
+
+          fs.writeFileSync(`${basePath}/build/json/${item.edition}.json`, JSON.stringify(item, null, 2));
+          // Add metadata to assets folder for Solana / SEI
+          if (network == NETWORK.sol || network == NETWORK.sei) {
+            fs.writeFileSync(`${basePath}/build/assets/${item.edition}.json`, JSON.stringify(data, null, 2))
+          }
+          // Save copy without file extension for opensea drop contracts
+          fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
         }
       })
     }
@@ -266,8 +291,14 @@ newData.forEach((item) => {
               value: key,
             }
             item.attributes.push(rarityTrait);
-            fs.writeFileSync(`${basePath}/build_new/json/${item.edition}.json`, JSON.stringify(item, null, 2));
-            fs.writeFileSync(`${basePath}/build_new/json-drop/${item.edition}`, JSON.stringify(item, null, 2));
+
+            fs.writeFileSync(`${basePath}/build/json/${item.edition}.json`, JSON.stringify(item, null, 2));
+            // Add metadata to assets folder for Solana / SEI
+            if (network == NETWORK.sol || network == NETWORK.sei) {
+              fs.writeFileSync(`${basePath}/build/assets/${item.edition}.json`, JSON.stringify(data, null, 2))
+            }
+            // Save copy without file extension for opensea drop contracts
+            fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
           }
         }
       }
@@ -316,11 +347,17 @@ newData.forEach((item) => {
     let result = item.attributes.filter(obj => obj.trait_type !== 'Rarity');
     item.attributes = result;
   }
-  fs.writeFileSync(`${basePath}/build_new/json/${item.edition}.json`, JSON.stringify(item, null, 2));
-  fs.writeFileSync(`${basePath}/build_new/json-drop/${item.edition}`, JSON.stringify(item, null, 2));
+
+  fs.writeFileSync(`${basePath}/build/json/${item.edition}.json`, JSON.stringify(item, null, 2));
+  // Add metadata to assets folder for Solana / SEI
+  if (network == NETWORK.sol || network == NETWORK.sei) {
+    fs.writeFileSync(`${basePath}/build/assets/${item.edition}.json`, JSON.stringify(data, null, 2))
+  }
+  // Save copy without file extension for opensea drop contracts
+  fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
 })
 
-fs.writeFileSync(`${basePath}/build_new/json/_metadata.json`, JSON.stringify(newData, null, 2));
+fs.writeFileSync(`${basePath}/build/json/_metadata.json`, JSON.stringify(data, null, 2));
 
 // Prep export to review data outside of terminal
 let layerExport = [];

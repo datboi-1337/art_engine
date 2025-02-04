@@ -2,13 +2,13 @@ const basePath = process.cwd();
 const { MODE } = require(`${basePath}/constants/blend_mode.js`);
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-const collectionSize = 65;
+const collectionSize = 77;
+const oneOfOne = false;
 
-// ********* Advanced weight options *********
 /* 
 * Set this to true if you want to use EXACT weights. 
 * Note that your weights must add up to the total number
-* you want of that trait.
+* you want of that trait in the particular layer configuration it's in.
 */
 const exactWeight = false;
 
@@ -16,7 +16,7 @@ const exactWeight = false;
 // NOTE: using 'eth' will generate metadata compatible with most EVM chains
 const network = NETWORK.eth;
 
-// General metadata
+// General metadata. collectionName and description can be unique to each layer configuration if desired
 const collectionName = "Your Collection";
 const symbol = "YC";
 const description = "Remember to replace this description";
@@ -38,7 +38,10 @@ const solanaMetadata = {
 };
 
 // It's suggested to keep shuffle enabled to avoid the same traits generating for spans of images
-const shuffleLayerConfigurations = false;
+const shuffleLayerConfigurations = true;
+
+// Populate with TRAITS you want to exclude from metadata. "None" is the default value, remove if you want "None" to appear in final metadata
+const excludeFromMetadata = ["None"];
 
 const layerConfigurations = [
   {
@@ -47,6 +50,7 @@ const layerConfigurations = [
     namePrefix: collectionName,
     description: description,
     layersOrder: [
+      // Variant system still works, but is being deprecated. Use conditionalOn layer option instead
       { name: "Variant", options: { displayName: "Color" } }, 
       { name: "Arms" },
       { name: "Back" },
@@ -58,7 +62,7 @@ const layerConfigurations = [
             opacity: 0.5,
             zindex: 25,
             }
-          ]
+          ],
         } 
       },
       { name: "Eyes",
@@ -98,13 +102,38 @@ const layerConfigurations = [
       }
     ],
   },
+  {
+    growEditionSizeTo: 12, // This will generate 12 images with this layersOrder
+    namePrefix: collectionName,
+    description: description,
+    layersOrder: [
+      { name: "Background" },
+      { name: "Body" },
+      { name: "Skin" }, 
+      { name: "Outfit" },
+      { name: "Face" }, 
+      { name: "Hair" },
+      { name: "Action", options: {
+        conditionalOn: [ "Skin", "Outfit" ],
+      } },
+    ],
+  },
 ];
 
+// For now, when generating GIFs, it's reccomended to keep width/height the same size as your traits
 const format = {
-  width: 512,
-  height: 512,
+  width: 500,
+  height: 500,
   dpi: 72,
   smoothing: false,
+};
+
+// Set generate to true if any layers are .gif
+const gif = {
+  numberOfFrames: 60,
+  repeat: 0,
+  quality: 100,
+  delay: 40,
 };
 
 const extraMetadata = {};
@@ -174,13 +203,6 @@ const statBlocks = [
 ];
 
 const debugLogs = false;
-
-const gif = {
-  export: false,
-  repeat: 0,
-  quality: 100,
-  delay: 500,
-};
 
 // Currently disabled
 const text = {
@@ -266,6 +288,7 @@ module.exports = {
   zindexDelimiter,
   preview,
   shuffleLayerConfigurations,
+  excludeFromMetadata,
   debugLogs,
   extraMetadata,
   pixelFormat,
@@ -286,4 +309,5 @@ module.exports = {
   statBlocks,
   extraAttributes,
   bypassZeroProtection,
+  oneOfOne,
 };

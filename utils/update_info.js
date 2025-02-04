@@ -25,20 +25,16 @@ data.forEach((item) => {
   } else {
     item.image = `${baseUri}/${item.edition}.png`;
   }
-  fs.writeFileSync(
-    `${basePath}/build/json/${item.edition}.json`,
-    JSON.stringify(item, null, 2)
-  );
-  fs.writeFileSync(
-    `${basePath}/build/opensea-drop/json/${item.edition}`,
-    JSON.stringify(item, null, 2)
-  );
+  fs.writeFileSync(`${basePath}/build/json/${item.edition}.json`, JSON.stringify(item, null, 2));
+  // Add metadata to assets folder for Solana / SEI
+  if (network == NETWORK.sol || network == NETWORK.sei) {
+    fs.writeFileSync(`${basePath}/build/assets/${item.edition}.json`, JSON.stringify(data, null, 2))
+  }
+  // Save copy without file extension for opensea drop contracts
+  fs.writeFileSync(`${basePath}/build/opensea-drop/json/${item.edition}`, JSON.stringify(data, null, 2));
 });
 
-fs.writeFileSync(
-  `${basePath}/build/json/_metadata.json`,
-  JSON.stringify(data, null, 2)
-);
+fs.writeFileSync(`${basePath}/build/json/_metadata.json`, JSON.stringify(data, null, 2));
 
 if (network == NETWORK.sol) {
   console.log(`Updated symbol to ${symbol}`);

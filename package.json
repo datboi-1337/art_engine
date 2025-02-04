@@ -1,6 +1,6 @@
 {
   "name": "datlips_art_engine",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Datlips Art Engine (Hashlips fork) is a tool used to create genrative artworks based on provided layers.",
   "main": "index.js",
   "bin": "index.js",
@@ -18,20 +18,27 @@
     "rarity": "node utils/rarityFromMetadata.js",
     "preview": "node utils/preview.js",
     "pixelate": "node utils/pixelate.js",
-    "update_info": "node utils/update_info.js",
+    "update": "node utils/update_info.js",
     "preview_gif": "node utils/preview_gif.js",
     "generate_metadata": "node utils/generate_metadata.js",
     "clean": "node utils/cleanMetadata.js",
     "remove": "node utils/removeAttributes",
-    "rename": "node utils/renameAttributes"
+    "rename": "node utils/renameAttributes",
+    "archive": "node utils/archiveCollection.js",
+    "restore": "node utils/restoreCollection.js",
+    "upload": "node utils/ipfsUpload.js"
   },
   "author": "Daniel Eugene Botha (HashLips) & Datboi 1337",
   "license": "MIT",
   "dependencies": {
     "canvas": "^2.8.0",
     "cli-progress": "^3.12.0",
+    "dotenv": "^16.4.7",
     "enquirer": "^2.4.1",
+    "ffmpeg-static": "^5.2.0",
+    "fs-extra": "^11.2.0",
     "gif-encoder-2": "^1.0.5",
-    "sha1": "^1.1.1"
+    "sha1": "^1.1.1",
+    "thirdweb": "^5.67.0"
   }
 }

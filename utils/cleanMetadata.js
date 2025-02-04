@@ -14,17 +14,29 @@ let removeEdition = false;
 let removeDate = true;
 let removeCompiler = false;
 
+// Keep backup directory clean by deleting oldest backup if more than 10 exist
+let backupDir = `${basePath}/backup`;
+if (!fs.existsSync(backupDir)) {
+  fs.mkdirSync(backupDir, { recursive: true });
+}
+let backupFolders = fs.readdirSync(backupDir);
+
+if (backupFolders.length > 10) {
+  let oldestFolder = backupFolders.sort((a, b) => a.localeCompare(b))[0];
+  fs.removeSync(`${backupDir}/${oldestFolder}`);
+}
+
+// Backup existing metadata
+const dateTime = new Date().toISOString().replace(/[-:.]/g, '_');
+const sourceDir = `${basePath}/build/json`;
+const destinationDir = `${basePath}/backup/${dateTime}`;
+
+fs.mkdirSync(destinationDir, { recursive: true });
+fs.copy(sourceDir, destinationDir);
+
 // Read json data
 let rawdata = fs.readFileSync(`${basePath}/build/json/_metadata.json`);
 let data = JSON.parse(rawdata);
-
-// Create new directory if it doesn't already exist
-const dir = `${basePath}/build_new/json`;
-if (!fs.existsSync(dir)) {
-	fs.mkdirSync(dir, {
-		recursive: true
-	});
-}
 
 // Remove selected data
 data.forEach((item) => {
@@ -41,10 +53,10 @@ data.forEach((item) => {
   if (removeCompiler) {
     delete item.compiler;
   }
-  fs.writeFileSync(`${basePath}/build_new/json/${tempEdition}.json`, JSON.stringify(item, null, 2));
+  fs.writeFileSync(`${basePath}/build/json/${tempEdition}.json`, JSON.stringify(item, null, 2));
 });
 
-fs.writeFileSync(`${basePath}/build_new/json/_metadata.json`, JSON.stringify(data, null, 2));
+fs.writeFileSync(`${basePath}/build/json/_metadata.json`, JSON.stringify(data, null, 2));
 
 let removedString = '';
 if (removeDna) {

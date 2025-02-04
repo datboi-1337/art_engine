@@ -10,8 +10,9 @@ const {
   checkCompatibility, 
   countAndSave 
 } = require(`${basePath}/modules/isCompatible.js`);
-const { startCreating, buildSetup, rarityBreakdown, createPNG } = require(`${basePath}/src/main.js`);
-const cliProgress = require('cli-progress');
+const { startCreating, buildSetup, rarityBreakdown, createImage } = require(`${basePath}/src/main.js`);
+const { cleanupTempFrames } = require(`${basePath}/modules/layerGIF.js`);
+const layersDir = `${basePath}/layers`;
 
 const incompatible = `${basePath}/compatibility/incompatibilities.json`
 
@@ -119,7 +120,8 @@ const runScript = async () => {
                 incompatibilities[children[i]][tempIndex].incompatibleParents[k],
                 incompatibilities[children[i]][tempIndex].parentIndex,
                 incompatibilities[children[i]][tempIndex].childIndex,
-                incompatibilities[children[i]][tempIndex].layerIndex
+                incompatibilities[children[i]][tempIndex].layerIndex,
+                incompatibilities[children[i]][tempIndex].universal
               );
             } else {
               // console.log(`Marking Forced Combinations...`);
@@ -128,7 +130,8 @@ const runScript = async () => {
                 incompatibilities[children[i]][tempIndex].parents[0],
                 incompatibilities[children[i]][tempIndex].parentIndex,
                 incompatibilities[children[i]][tempIndex].childIndex,
-                incompatibilities[children[i]][tempIndex].layerIndex
+                incompatibilities[children[i]][tempIndex].layerIndex,
+                incompatibilities[children[i]][tempIndex].universal
               );
             }
           }
@@ -150,7 +153,7 @@ const runScript = async () => {
 
   countAndSave();
 
-  buildSetup();
+  await buildSetup();
   await startCreating();
   await rarityBreakdown();
 
@@ -160,13 +163,32 @@ const runScript = async () => {
     choices: ['Proceed with image generation', 'Abort']
   });
 
-  const answer = await selectProceed.run();
+  let answer = await selectProceed.run();
+  let gifsGenerated = false;
 
   if (answer === 'Proceed with image generation') {
-    await createPNG();
+    gifsGenerated = await createImage();
   } else {
     console.log('Process aborted.');
     process.exit(0);
+  }
+
+  if (gifsGenerated) {
+    const selectClearTempFrames = new Select({
+      name: 'clearTempFrames',
+      message: 'Please review generated GIFs and choose whether to keep or clear temporary frames. \nIf you plan to re-generate, it is recommended to keep them to save generation time. \nIf you are done, you can clear them to save disk space.',
+      choices: ['Keep temp frames', 'Clear temp frames']
+    });
+    
+    answer = await selectClearTempFrames.run();
+    
+    if (answer === 'Clear temp frames') {
+      await cleanupTempFrames(layersDir);
+      console.log('Temp frames deleted.');
+    } else {
+      console.log('Temp frames preserved.');
+      process.exit(0);
+    }
   }
 };
 
