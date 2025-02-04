@@ -45,6 +45,11 @@ Use Node 20.xx.xx
 - [Generate metadata for non-generated images](#oneofone)
 - [oneOfOne example](#oneofone-example)
 
+## IPFS Upload
+- [Upload images and metadata directly from terminal](#ipfs-upload)
+  - [IPFS upload examples](#ipfs-upload-examples)
+
+
 ## Conditional generation
 - [Guided wizard for setting incompatible traits and forced combinations](#compatibility-wizard)
   - [Incompatibility example](#incompatibility-example)
@@ -118,7 +123,7 @@ Use Node 20.xx.xx
 ## Exclude traits from metadata
 - [Define any traits that should not be included in metadata](#exclude-traits-from-metadata)
 
-## Utils
+## Misc. Utils
 - [cleanMetadata](#cleanmetadata)
 - [removeAttributes](#removeattributes)
 - [renameAttributes](#renameattributes)
@@ -208,6 +213,21 @@ Setup layerConfiguration to only reference oneOfOne folder:
   "value": "Your Collection #1/100"
 },
 ```
+
+# IPFS Upload
+To use IPFS upload, you must obtain a Thirdweb API key. Please be sure to review [Thirdweb storage policy](https://portal.thirdweb.com/infrastructure/storage/overview) for more information and costs. 
+Once you've aquired an API key, copy 'env.example' and rename it '.env'. Replace 'yourKeyHere' with your Thirdweb secret key
+```js
+THIRDWEB_SECRET_KEY=yourKeyHere
+```
+
+# IPFS Upload examples
+This command has two options for uploading images from `./build/images` and metadata from `./build/json` unless generating metadata for a [1 of 1](OneOfOne) collection, in which case it would upload images from `./layers/oneOfOne`. 
+`npm run upload images`
+![ipfsUploadImages](media/ipfsUpload_images.png)
+`npm run upload metadata`
+![ipfsUploadImages](media/ipfsUpload_metadata.png)
+**NOTE:** Be sure to update `baseUri` value in config.js with image CID from terminal after running `npm run upload images`. Then, run `npm run update`. Then, with metadata updated with image CID, you can run `npm run upload metadata`
 
 # Compatibility Wizard
 You will be prompted in the terminal for any incompatibilities in your collection when running generation. Incompatible traits must be defined by first selecting the item that will be selected first in the layersOrder, then choosing a trait that will be selected after the first. The incompatibility wizard will only allow you to select options that appear *after* the first trait. 
@@ -416,10 +436,99 @@ For this setup, the layer configuration should look like this. **Please note** t
 ```
 
 # Conditional Parents
-
+Replacing the current variant system, a layer option, `conditionalOn` has been added that enables setting one or multiple conditional parents. A common use-case for this option would be ensuring certain traits are the same color or skin pattern, but it could be used to set up any traits that have variation depending on selected parent traits. When populating the `conditionalOn` array, be sure to only include layers that come before, and if the layer is dependent on multiple parent traits, be sure to list them *in order*. 
+Setting `conditionalOn` enables creating a nested folder structure within the layer folder that must contain any listed parent traits and folders for each of their traits containing variants of the current layer. 
+**NOTE:** When using `conditionalOn` system, the FULL folder structure must be created. If there are 5 outfit traits, you must create a folder for each of those 5 outfits. In a scenario where there is only a few conditional traits (rather than all traits in parent layer(s)), incompatibility system should be used instead to mark incompatibilities/forced combinations. 
+**NOTE:** Traits are selected from the layer root, then the specific image is rendered based on conditional nested folder structure. Weights should not be present on nested traits, ONLY for the root layer traits. 
 
 # Conditional Parents example
-
+Here's a comparison of how `conditionalOn` works when compared directly to the Variant system
+Variant setup:
+```js
+{
+  growEditionSizeTo: 10,
+  namePrefix: collectionName,
+  description: description,
+  layersOrder: [
+    { name: "Variant", options: { displayName: "Skin" } }, 
+    ...
+    { name: "Action" }, // Within the Action folder would be folders for each Variant trait
+  ],
+},
+```
+`conditionalOn` setup:
+```js
+{
+  growEditionSizeTo: 10,
+  namePrefix: collectionName,
+  description: description,
+  layersOrder: [
+    { name: "Skin" }, 
+    ...
+    { name: "Action", options: {
+      conditionalOn: [ "Skin" ], // Within the Action folder would be a nested folder structure
+    } },
+  ],
+},
+```
+`conditionalOn` allows more flexibility like assigning multiple conditional parents:
+```js
+{
+  growEditionSizeTo: 10,
+  namePrefix: collectionName,
+  description: description,
+  layersOrder: [
+    { name: "Skin" }, 
+    { name: "Outfit" },
+    ...
+    { name: "Action", options: {
+      conditionalOn: [ "Skin", "Outfit" ],
+    } },
+  ],
+},
+```
+Nested folder structure for the above example:
+```
+layers
+|__Skin
+  |__Skin 1#Common.gif
+  |__Skin 2#Rare.gif
+  ...
+|__Outfit
+  |__Outfit 1#Common.gif
+  |__Outfit 2#Rare.gif
+  ...
+|__Action
+  |__Skin
+    |__Skin 1
+      |__Outfit
+        |__Outfit 1
+          |__Action 1.gif <<<-----Action 1 that matches Skin 1 and Outfit 1
+          |__Action 2.gif <<<-----Action 2 that matches Skin 1 and Outfit 1
+          ...
+        |__Outfit 2
+          |__Action 1.gif <<<-----Action 1 that matches Skin 1 and Outfit 2
+          |__Action 2.gif <<<-----Action 2 that matches Skin 1 and Outfit 2
+          ...
+    |__Skin 2
+      |__Outfit
+        |__Outfit 1
+          |__Action 1.gif <<<-----Action 1 that matches Skin 2 and Outfit 1
+          |__Action 2.gif <<<-----Action 2 that matches Skin 2 and Outfit 1
+          ...
+        |__Outfit 2
+          |__Action 1.gif <<<-----Action 1 that matches Skin 2 and Outfit 2
+          |__Action 2.gif <<<-----Action 2 that matches Skin 2 and Outfit 2
+          ...
+  |__Action 1#Common.gif
+  |__Action 2#Rare.gif
+  ...
+    
+```
+Referencing layers/Action in this repo will show the structure in more detail. Here you can see the available traits when the 'Skin 1' Skin trait and 'Blue Tee' Outfit trait has been previously selected by the engine:
+![conditionalOnFolderStructure](media/conditionalOn_folder_structure_1.png)
+If the 'Skin 3' Skin trait and 'Red Hoodie' Outfit trait were previously selected intead:
+![conditionalOnFolderStructure](media/conditionalOn_folder_structure_2.png)
 
 # Subtrait options
 Subtraits are intended to be utilised when you have parts of a trait that need different options (blend mode, opacity, Z-Index) than it's parent. 
@@ -799,3 +908,6 @@ includeTraitPercentages will add occurence percentages to all other traits like:
   "value": "Red (12.00%)"
 }
 ```
+
+# Create Opensea CSV
+This utility creates a .csv file compatible with Opensea Drop uploads. 
