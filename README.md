@@ -148,6 +148,7 @@ All layer options (subTraits, etc.) are compatible with .gif traits.
 # GIF example
 Place .gifs in layer folders like you would .png. 
 ![gifFolder](media/gif_folder.png)
+
 Setup layer configuration the same way as .png images
 ```js
 {
@@ -176,18 +177,24 @@ const gif = {
   delay: 40,
 };
 ```
+
 **NOTE:** .gif files that contain fewer frames will be spread over the `numberOfFrames`. If `numberOfFrames` is set to 60 and one .gif has only 2 frames, it will play the first frame for the first 30 frames, and the second frame for the last 30 frames. 
 Individual traits:
 ![separateGifs](media/gif_separate_traits.gif)
+
 This example adds a .png layer for demonstration
 ![gifExample1](media/gif_example_1.gif) 
+
 The engine will temporarily extract individual frames from each gif and store them in a 'temp_frames' folder in the same directory as the trait .gif. After image generation, you will be prompted to either clear or keep these files. 
 ![clearTempFrames](media/clearTempFrames_prompt.png)
 
 # OneOfOne
 When images don't need to be generated because the collection is all 1 of 1, this system can be enabled. Because the images do not require generation, this system will only generate metadata. 
+
 **NOTE:** Images must be placed in a folder called 'oneOfOne' like so: `./layers/oneOfOne`
+
 **NOTE:** Images must be named with numbers (ie: 1.png, 2.png, etc.). oneOfOne does not require weight, and should not define weight in the filename. 
+
 **NOTE:** It's recommended to upload the images to IPFS first so you can enter the CID into  baseURI in config.js before metadata generation. You can use the [IPFS upload system in this engine if you have a Thirdweb API key](#ipfs-upload)
 
 # OneOfOne example
@@ -225,8 +232,10 @@ THIRDWEB_SECRET_KEY=yourKeyHere
 This command has two options for uploading images from `./build/images` and metadata from `./build/json` unless generating metadata for a [1 of 1](OneOfOne) collection, in which case it would upload images from `./layers/oneOfOne`. 
 `npm run upload images`
 ![ipfsUploadImages](media/ipfsUpload_images.png)
+
 `npm run upload metadata`
 ![ipfsUploadImages](media/ipfsUpload_metadata.png)
+
 **NOTE:** Be sure to update `baseUri` value in config.js with image CID from terminal after running `npm run upload images`. Then, run `npm run update`. Then, with metadata updated with image CID, you can run `npm run upload metadata`
 
 # Compatibility Wizard
@@ -283,6 +292,7 @@ We can define the following forced combination (again, arbitraily chosen for dem
 
 # Advanced compatibility
 If you need to define multiple incompatibilities/forced combinations, and you don't want to use the wizard, you *can* define them manually by editing compatibility/compatibility.json, adding an object like the example below defining all the incompatibilities and forced combinations from above. 
+
 **NOTE** This should really only be used by advanced users. If this is defined incorrectly, it's possible to experience generation issues.
 
 ```js
@@ -438,7 +448,9 @@ For this setup, the layer configuration should look like this. **Please note** t
 # Conditional Parents
 Replacing the current variant system, a layer option, `conditionalOn` has been added that enables setting one or multiple conditional parents. A common use-case for this option would be ensuring certain traits are the same color or skin pattern, but it could be used to set up any traits that have variation depending on selected parent traits. When populating the `conditionalOn` array, be sure to only include layers that come before, and if the layer is dependent on multiple parent traits, be sure to list them *in order*. 
 Setting `conditionalOn` enables creating a nested folder structure within the layer folder that must contain any listed parent traits and folders for each of their traits containing variants of the current layer. 
+
 **NOTE:** When using `conditionalOn` system, the FULL folder structure must be created. If there are 5 outfit traits, you must create a folder for each of those 5 outfits. In a scenario where there is only a few conditional traits (rather than all traits in parent layer(s)), incompatibility system should be used instead to mark incompatibilities/forced combinations. 
+
 **NOTE:** Traits are selected from the layer root, then the specific image is rendered based on conditional nested folder structure. Weights should not be present on nested traits, ONLY for the root layer traits. 
 
 # Conditional Parents example
@@ -527,6 +539,7 @@ layers
 ```
 Referencing layers/Action in this repo will show the structure in more detail. Here you can see the available traits when the 'Skin 1' Skin trait and 'Blue Tee' Outfit trait has been previously selected by the engine:
 ![conditionalOnFolderStructure](media/conditionalOn_folder_structure_1.png)
+
 If the 'Skin 3' Skin trait and 'Red Hoodie' Outfit trait were previously selected intead:
 ![conditionalOnFolderStructure](media/conditionalOn_folder_structure_2.png)
 
@@ -534,6 +547,7 @@ If the 'Skin 3' Skin trait and 'Red Hoodie' Outfit trait were previously selecte
 Subtraits are intended to be utilised when you have parts of a trait that need different options (blend mode, opacity, Z-Index) than it's parent. 
 
 **NOTE**: These traits are not included in the final metadata. 
+
 # Subtrait examples
 Good examples of what subtraits are useful for are things like Hat or Hair traits that need to be in front of some elements but behind others, or shadows that need to apply a 50% opacity while the parent trait needs to be full opacity. 
 
@@ -632,6 +646,7 @@ layersOrder: [
 ## Z-Index examples
 Z-Index can be overridden in two ways. First, via the subTraits system. Examples can be seen [here](#subtrait-examples). Second, by prepending the trait file with Z-Index in the format `z##$`. Where `##` is replaced with the desired Z-Index.  
 ![subTraitsExamples](media/zindex_traitExample.png)
+
 **NOTE**: You can change the Z-Index delimeter from `$` by editing 'zindexDelimiter' in config.js
 ```js
 const zindexDelimiter = "$";
